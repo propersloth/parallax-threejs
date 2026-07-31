@@ -1,0 +1,14 @@
+{
+  // Recommended, not required — VS Code prompts to install these on
+  // opening the workspace. Each one maps to something this project
+  // actually uses, not a generic starter list.
+  "recommendations": [
+    "denoland.vscode-deno",       // this whole project runs on Deno
+    "antaalt.shader-validator",   // GLSL/HLSL/WGSL diagnostics, not just syntax color — relevant given the shader-reviewer subagent and check-shader-bindings.ts
+    "ms-playwright.playwright",   // Lane 2's tests and every interactive script drive Playwright directly
+    "redhat.vscode-yaml",         // five GitHub Actions workflows plus dependabot.yml
+    "github.vscode-github-actions",
+    "ms-vscode.powershell",       // the .ps1 setup script siblings
+    "editorconfig.editorconfig"   // otherwise .editorconfig (just added) is silently ignored
+  ]
+}

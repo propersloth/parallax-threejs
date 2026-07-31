@@ -1,0 +1,16 @@
+# Shell scripts must always have LF line endings — CRLF breaks the
+# shebang line and fails with "bad interpreter" on Linux/Mac CI runners.
+# This specifically matters now that .sh and .ps1 siblings exist side by
+# side (e.g. scripts/setup-spector.sh vs setup-spector.ps1) — a Windows
+# contributor's default core.autocrlf=true could otherwise silently
+# convert the .sh files on checkout.
+*.sh text eol=lf
+.githooks/pre-commit text eol=lf
+
+# PowerShell scripts: explicit rather than left to git's auto-detection.
+*.ps1 text eol=crlf
+
+# Everything else: normalize line endings on commit, native convention on
+# checkout — git's standard default behavior, made explicit rather than
+# implicit.
+* text=auto

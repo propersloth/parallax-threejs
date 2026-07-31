@@ -1,0 +1,67 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Format check",
+      "type": "shell",
+      "command": "deno fmt --check scripts/ hooks/ templates/",
+      "group": "build",
+      "presentation": { "reveal": "silent", "panel": "shared" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Lint",
+      "type": "shell",
+      "command": "deno lint scripts/ hooks/ templates/",
+      "group": "build",
+      "presentation": { "reveal": "silent", "panel": "shared" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Validate config syntax",
+      "type": "shell",
+      "command": "deno run --allow-read scripts/validate-config-syntax.ts",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Test: Lane 1 (fast)",
+      "type": "shell",
+      "command": "deno test --allow-run=git --allow-read --allow-write --ignore=templates/test/visual/lib/capture_test.ts,templates/scripts/lib/live-scene_test.ts scripts/ hooks/ templates/",
+      "group": { "kind": "test", "isDefault": true },
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Test: Lane 2 (browser, slower)",
+      "type": "shell",
+      "command": "deno test --allow-net --allow-read --allow-write --allow-env --allow-run templates/test/visual/lib/capture_test.ts templates/scripts/lib/live-scene_test.ts",
+      "group": "test",
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "problemMatcher": [],
+      "detail": "Needs Playwright's Chromium installed once: deno run -A npm:playwright install chromium"
+    },
+    {
+      "label": "Pre-commit (all Lane 1 checks)",
+      "dependsOn": ["Format check", "Lint", "Validate config syntax", "Test: Lane 1 (fast)"],
+      "dependsOrder": "sequence",
+      "problemMatcher": [],
+      "detail": "Same thing .githooks/pre-commit runs — this is the manual/on-demand version."
+    },
+    {
+      "label": "Run visual regression suite",
+      "type": "shell",
+      "command": "deno task visual:run",
+      "group": "test",
+      "problemMatcher": [],
+      "detail": "Requires /init to have scaffolded deno.json's tasks first — run from a project that has run /init, not from this plugin repo directly."
+    },
+    {
+      "label": "Interactive project setup",
+      "type": "shell",
+      "command": "deno run -A scripts/setup.ts",
+      "problemMatcher": [],
+      "detail": "The TUI picker — Spector, skills, physics/animation/postprocessing/audio deps."
+    }
+  ]
+}

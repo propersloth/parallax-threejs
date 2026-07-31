@@ -1,0 +1,108 @@
+name: Release
+
+# Manual only — this is the "at my discretion" trigger. Bumps MINOR by
+# default (x.N.x, resetting patch to 0, per standard semver), but exposes
+# patch/major too since "standard semantic versioning practices" includes
+# both — pick whichever fits the actual change when you run this.
+on:
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: "Version bump type"
+        required: true
+        default: "minor"
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      # Same checks as ci.yml, re-run here as a gate — a release can never
+      # ship something that hasn't been re-verified at release time, even
+      # though the merge that led here already passed CI once.
+      - name: Type-check
+        run: deno check scripts/*.ts
+      - name: Format check
+        run: deno fmt --check scripts/ hooks/ templates/
+      - name: Lint
+        run: deno lint scripts/ hooks/ templates/
+      - name: Validate all JSON/YAML config actually parses
+        run: deno run --allow-read scripts/validate-config-syntax.ts
+      - name: Run unit tests (Lane 1 — fast)
+        run: deno test --allow-run=git --allow-read --allow-write --ignore=templates/test/visual/lib/capture_test.ts,templates/scripts/lib/live-scene_test.ts scripts/ hooks/ templates/
+      - name: Install Playwright browsers (for Lane 2)
+        run: deno run -A npm:playwright install chromium --with-deps
+      - name: Run extended tests (Lane 2 — browser-based, justified at release time)
+        run: deno test --allow-net --allow-read --allow-write --allow-env --allow-run templates/test/visual/lib/capture_test.ts templates/scripts/lib/live-scene_test.ts
+      - name: Validate plugin.json against schema
+        run: |
+          curl -sL https://www.schemastore.org/claude-code-plugin-manifest.json -o /tmp/plugin-schema.json
+          npx --yes ajv-cli validate -s /tmp/plugin-schema.json -d .claude-plugin/plugin.json
+
+      - name: Compute new version
+        id: version
+        run: |
+          CURRENT=$(jq -r .version .claude-plugin/plugin.json)
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          case "${{ github.event.inputs.bump_type }}" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH + 1)) ;;
+          esac
+          echo "new_version=$MAJOR.$MINOR.$PATCH" >> "$GITHUB_OUTPUT"
+
+      - name: Update plugin.json
+        run: |
+          jq --arg v "${{ steps.version.outputs.new_version }}" '.version = $v' .claude-plugin/plugin.json > tmp.json && mv tmp.json .claude-plugin/plugin.json
+
+      - name: Update marketplace.json, if this repo self-hosts one
+        run: |
+          if [ -f .claude-plugin/marketplace.json ]; then
+            jq --arg v "${{ steps.version.outputs.new_version }}" \
+              '(.plugins[] | select(.name == "parallax-threejs") | .version) = $v' \
+              .claude-plugin/marketplace.json > tmp.json && mv tmp.json .claude-plugin/marketplace.json
+          fi
+
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .claude-plugin/plugin.json
+          [ -f .claude-plugin/marketplace.json ] && git add .claude-plugin/marketplace.json
+          git commit -m "chore(release): v${{ steps.version.outputs.new_version }} [skip ci]"
+          git push
+
+      - name: Tag
+        run: |
+          git tag "v${{ steps.version.outputs.new_version }}"
+          git push origin "v${{ steps.version.outputs.new_version }}"
+
+      - name: Build dist zip
+        run: |
+          mkdir -p dist
+          zip -r "dist/parallax-threejs-v${{ steps.version.outputs.new_version }}.zip" . \
+            -x '.git/*' -x '.github/*' -x 'dist/*' -x '*.DS_Store'
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${{ steps.version.outputs.new_version }}" \
+            "dist/parallax-threejs-v${{ steps.version.outputs.new_version }}.zip" \
+            --title "v${{ steps.version.outputs.new_version }}" \
+            --generate-notes

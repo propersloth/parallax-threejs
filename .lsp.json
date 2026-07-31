@@ -1,0 +1,13 @@
+{
+  "glsl": {
+    "command": "shader-language-server",
+    "args": ["--glsl"],
+    "extensionToLanguage": {
+      ".glsl": "glsl",
+      ".vert": "glsl",
+      ".frag": "glsl",
+      ".vs": "glsl",
+      ".fs": "glsl"
+    }
+  }
+}

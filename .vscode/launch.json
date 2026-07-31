@@ -1,0 +1,81 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      // Attaches to the SAME browser tab live-scene.ts's attachToLiveScene()
+      // connects to via CDP — not a fresh browser VS Code launches itself.
+      // That's deliberate, matching the whole "shared sight" premise this
+      // plugin is built around (see live-scene.ts's own header comment):
+      // set a breakpoint here, interact with the live page, and it hits
+      // in the exact session Claude/checkpoint/sweep are also looking at.
+      //
+      // Requires something already listening on this port — the dev
+      // server's browser tab, opened with --remote-debugging-port=9222
+      // (or whatever BRIDGE_PORT is set to; change the port below to
+      // match if you've overridden the default).
+      "type": "chrome",
+      "request": "attach",
+      "name": "Attach to live Chromium (BRIDGE_PORT)",
+      "port": 9222,
+      "webRoot": "${workspaceFolder}"
+    },
+    {
+      // Generic: debug whatever Deno file is currently open (checkpoint.ts,
+      // sweep-param.ts, setup.ts, etc.) with real breakpoints. Standard
+      // Deno-via-node-debug-adapter pattern.
+      "request": "launch",
+      "name": "Debug: current Deno file",
+      "type": "node",
+      "program": "${file}",
+      "cwd": "${workspaceFolder}",
+      "runtimeExecutable": "deno",
+      "runtimeArgs": ["run", "--inspect-wait", "--allow-all", "${file}"],
+      "attachSimplePort": 9229
+    },
+    {
+      // Same idea, scoped to Lane 1's test suite — breakpoints inside
+      // check-shader-bindings.ts, manifest.ts, diff.ts, etc. hit as the
+      // tests run.
+      "request": "launch",
+      "name": "Debug: Lane 1 tests",
+      "type": "node",
+      "cwd": "${workspaceFolder}",
+      "runtimeExecutable": "deno",
+      "runtimeArgs": [
+        "test",
+        "--inspect-wait",
+        "--allow-run=git",
+        "--allow-read",
+        "--allow-write",
+        "--ignore=templates/test/visual/lib/capture_test.ts,templates/scripts/lib/live-scene_test.ts",
+        "scripts/",
+        "hooks/",
+        "templates/"
+      ],
+      "attachSimplePort": 9229
+    },
+    {
+      // Lane 2 — breakpoints inside capture.ts/live-scene.ts's own logic
+      // (the test code), not inside the fixture page it drives. For
+      // stepping through page-side JS instead, use the Chromium-attach
+      // config above against a real running session.
+      "request": "launch",
+      "name": "Debug: Lane 2 tests (browser-based)",
+      "type": "node",
+      "cwd": "${workspaceFolder}",
+      "runtimeExecutable": "deno",
+      "runtimeArgs": [
+        "test",
+        "--inspect-wait",
+        "--allow-net",
+        "--allow-read",
+        "--allow-write",
+        "--allow-env",
+        "--allow-run",
+        "templates/test/visual/lib/capture_test.ts",
+        "templates/scripts/lib/live-scene_test.ts"
+      ],
+      "attachSimplePort": 9229
+    }
+  ]
+}

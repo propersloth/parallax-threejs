@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+    "chrome-devtools-mcp": {
+      "command": "npx",
+      "args": ["-y", "chrome-devtools-mcp@1.6.0"]
+    },
+    "threejs-devtools-mcp": {
+      "command": "npx",
+      "args": ["-y", "threejs-devtools-mcp@0.2.1"],
+      "env": { "DEV_PORT": "3000" }
+    },
+    "playwright-mcp": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@0.0.78"]
+    },
+    "spector": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/vendor/spector/mcp/dist/index.js"]
+    }
+  }
+}

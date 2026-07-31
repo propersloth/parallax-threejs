@@ -1,0 +1,8 @@
+{
+  "checkpoint": "deno run --allow-net --allow-read --allow-write --allow-env scripts/checkpoint.ts",
+  "sweep": "deno run --allow-net --allow-read --allow-write --allow-env scripts/sweep-param.ts",
+  "diff-checkpoints": "deno run --allow-net --allow-read --allow-write --allow-env --allow-run scripts/diff-checkpoints.ts",
+  "replay": "deno run --allow-net --allow-read --allow-write --allow-env scripts/replay.ts",
+  "visual:run": "deno run --allow-net --allow-read --allow-write --allow-env --allow-run test/visual/run.ts run",
+  "visual:accept": "deno run --allow-read --allow-write test/visual/run.ts accept"
+}

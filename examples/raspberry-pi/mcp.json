@@ -1,0 +1,42 @@
+{
+  "mcpServers": {
+    "chrome-devtools-mcp": {
+      "command": "npx",
+      "args": [
+        "-y", "chrome-devtools-mcp@1.6.0",
+        "--executablePath=/usr/bin/google-chrome-stable",
+        "--isolated"
+      ],
+      "env": {
+        "DISPLAY": "REPLACE_WITH_YOUR_DISPLAY_VALUE",
+        "XAUTHORITY": "REPLACE_WITH_YOUR_XAUTHORITY_PATH"
+      }
+    },
+    "threejs-devtools-mcp": {
+      "command": "npx",
+      "args": ["-y", "threejs-devtools-mcp@0.2.1"],
+      "env": {
+        "DEV_PORT": "3000",
+        "CHROME_PATH": "/usr/bin/google-chrome-stable",
+        "DISPLAY": "REPLACE_WITH_YOUR_DISPLAY_VALUE",
+        "XAUTHORITY": "REPLACE_WITH_YOUR_XAUTHORITY_PATH"
+      }
+    },
+    "playwright-mcp": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@0.0.78"],
+      "env": {
+        "DISPLAY": "REPLACE_WITH_YOUR_DISPLAY_VALUE",
+        "XAUTHORITY": "REPLACE_WITH_YOUR_XAUTHORITY_PATH"
+      }
+    },
+    "spector": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/vendor/spector/mcp/dist/index.js"],
+      "env": {
+        "DISPLAY": "REPLACE_WITH_YOUR_DISPLAY_VALUE",
+        "XAUTHORITY": "REPLACE_WITH_YOUR_XAUTHORITY_PATH"
+      }
+    }
+  }
+}

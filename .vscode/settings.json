@@ -1,0 +1,47 @@
+{
+  // Deno owns this workspace's TS/JS — not the built-in VS Code
+  // TypeScript server, and not Prettier/ESLint (this project uses
+  // `deno fmt`/`deno lint`, not those).
+  "deno.enable": true,
+  "deno.lint": true,
+  "deno.unstable": false,
+
+  "[typescript]": { "editor.defaultFormatter": "denoland.vscode-deno" },
+  "[javascript]": { "editor.defaultFormatter": "denoland.vscode-deno" },
+  "[json]": { "editor.defaultFormatter": "denoland.vscode-deno" },
+  "[jsonc]": { "editor.defaultFormatter": "denoland.vscode-deno" },
+  "editor.formatOnSave": true,
+
+  // hooks/post-edit.js is the one file that's genuinely Node-targeted
+  // (its shebang says so) rather than Deno — excluded from Deno's LSP so
+  // it doesn't get flagged for using require()/process, which are
+  // correct there and nowhere else in this repo.
+  "deno.disablePaths": ["hooks/post-edit.js"],
+
+  // GLSL file associations — matches .lsp.json's own scope
+  // (shader_language_server) and check-shader-bindings.ts's extension
+  // handling (.vert/.vs, .frag/.fs, .glsl).
+  "files.associations": {
+    "*.vert": "glsl",
+    "*.frag": "glsl",
+    "*.vs": "glsl",
+    "*.fs": "glsl"
+  },
+
+  // Keep search/watcher off generated and vendored content — none of it
+  // is meant to be hand-edited, matching the "vendored content isn't
+  // ours to curate" principle already established for these paths.
+  "files.exclude": {
+    "vendor/": true,
+    ".parallax/": true
+  },
+  "search.exclude": {
+    "vendor/": true,
+    ".parallax/": true
+  },
+
+  "yaml.schemas": {
+    "https://json.schemastore.org/github-workflow.json": ".github/workflows/*.yml",
+    "https://json.schemastore.org/dependabot-2.0.json": ".github/dependabot.yml"
+  }
+}

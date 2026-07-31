@@ -1,0 +1,20 @@
+{
+  "name": "parallax-threejs",
+  "version": "0.3.0",
+  "description": "Three.js/GLSL debugging for Claude Code — correlates scene graph, console, GL state, and pixels into one diagnosis. Plus SHA-indexed visual regression testing.",
+  "author": {
+    "name": "Sean Corbett O'Donnell",
+    "email": "sean.c.odonnell@gmail.com"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/propersloth/parallax-threejs",
+  "homepage": "https://github.com/propersloth/parallax-threejs",
+  "keywords": [
+    "three.js",
+    "webgl",
+    "glsl",
+    "shader-debugging",
+    "visual-regression-testing",
+    "graphics"
+  ]
+}

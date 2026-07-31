@@ -1,0 +1,5 @@
+vendor/*
+!vendor/.gitkeep
+.parallax/
+node_modules/
+*.log

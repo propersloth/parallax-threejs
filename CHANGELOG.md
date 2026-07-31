@@ -1,0 +1,65 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+`bump-patch.yml` auto-increments the patch version on every merge to
+`main` — not every one of those merges gets its own entry here; this file
+tracks changes at release granularity (`release.yml`'s manual minor/major
+cuts), not every commit.
+
+## [Unreleased]
+
+Tracking toward the 1.0.0 release. Update this section with real UAT
+results before cutting the tag — see the UAT runbook.
+
+### Added
+- `.vscode/` workspace configuration — recommended extensions, Deno as
+  the TS/JS formatter, one-click tasks mirroring every CI check, and a
+  Chrome-attach debug config wired to the same `BRIDGE_PORT`
+  `live-scene.ts` already uses.
+- `.gitattributes`, `.editorconfig`, `.githooks/pre-commit` (opt-in via
+  `git config core.hooksPath .githooks`), `deno lint` in CI, and
+  `scripts/validate-config-syntax.ts` — closing a real gap: no linting,
+  no client-side check, and no automated config-syntax check existed
+  before this.
+- `extended-tests.yml` (Lane 2) — browser-based tests for `live-scene.ts`
+  and `capture.ts` against in-memory fixtures. Runs on push/schedule, not
+  PRs — see CONTRIBUTING.md's "Testing model."
+- Lane 1 unit tests (`ci.yml`'s `test` job) — pure-logic coverage for
+  `check-shader-bindings.ts`, `manifest.ts`, `diff.ts`, `git.ts`, and the
+  extracted `hooks/render-relevant.mjs` predicate. CI ran no behavioral
+  tests at all before this, only type-checking and formatting.
+- Windows PowerShell equivalents for the two setup scripts that were
+  macOS/Linux-only; `setup.ts` dispatches by platform automatically.
+  `setup-pi.sh` stays Linux-only by definition.
+- `/init` command + `templates/` — idempotent scaffolding for a real
+  project, replacing what was a manual multi-step copy (see
+  UAT-RUNBOOK.md Phase 2).
+- Core 1.0.0 feature set: four-evidence-channel correlated debugging
+  (AGENTS.md §2); three subagents with distinct roles (`shader-reviewer`,
+  `visual-debugger`, `scenario-author`); SHA-indexed visual regression
+  suite; interactive commands (`/checkpoint`, `/diff`, `/sweep`,
+  `/replay`, `/sync-view`); GLSL LSP integration; Spector MCP for
+  GL-state debugging; AI-DLC compatibility (AGENTS.md §8); Raspberry Pi 5
+  deployment path; OKF-conformant frontmatter; and CI (type-checking,
+  formatting, schema validation, CodeQL, Dependabot, dist-purity).
+
+### Changed
+- Pivoted to a standalone plugin — no separate example/demo repo
+  dependency; `/init`/`templates/` handle real-project scaffolding
+  instead.
+- Pivoted skill distribution — only `qa-visual-test-harness` ships by
+  default; general three.js/WebGL knowledge skills are optional, not
+  vendored (see `docs/RECOMMENDED-SKILLS.md`).
+
+### Known limitations at time of writing
+- Interactive scripts had not been run against real hardware as of this
+  entry. Replace this note with actual UAT results before the 1.0.0 tag.
+
+## Prior to [Unreleased]
+
+Development up to this point happened iteratively within a single
+working history, not independently tagged — this changelog begins
+tracking meaningfully at the first real release.

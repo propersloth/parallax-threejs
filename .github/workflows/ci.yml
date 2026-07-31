@@ -1,0 +1,123 @@
+name: CI
+
+# Runs on every PR into main — the gate before merge, which is also what
+# release.yml re-runs before cutting a release, so nothing ships that this
+# didn't already check.
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    # Lane 1 — fast, blocks every PR. Pure-logic tests plus git.ts (fast
+    # even though it's subprocess-based — no browser spin-up, so it stays
+    # here rather than in the deferred Lane 2 workflow). Only git_test.ts
+    # needs real permissions (subprocess + filesystem); everything else
+    # is genuinely pure. Anything needing a browser lives in
+    # extended-tests.yml instead — deliberately not run on every PR, per
+    # the "local suite should be cheap enough to be worth the commit"
+    # principle; that heavier coverage runs on push/schedule instead and
+    # reports back on its own cadence.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Run unit tests
+        # templates/ must be listed first: with it after scripts/ or hooks/,
+        # deno test's --ignore glob silently fails to match the two excluded
+        # files under templates/, and the Playwright-importing test module
+        # gets loaded anyway (uncaught NotCapable error, no --allow-env).
+        run: deno test --allow-run=git --allow-read --allow-write --ignore=templates/test/visual/lib/capture_test.ts,templates/scripts/lib/live-scene_test.ts templates/ scripts/ hooks/
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check scripts
+        run: deno check scripts/*.ts
+      - name: Format check
+        run: deno fmt --check scripts/ hooks/ templates/
+      - name: Lint
+        # First real run of this — never executed before, added per the
+        # linting/checkstyle gap analysis. Deno's default recommended
+        # rule set; a first-run failure here is plausible (e.g. the
+        # any-typed spots in live-scene.ts) and would need a follow-up
+        # fix, not evidence something's wrong with the check itself.
+        run: deno lint scripts/ hooks/ templates/
+
+  schema-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Validate all JSON/YAML config actually parses
+        # Replaces what was previously a manual check run by hand before
+        # every package/release — this closes that gap for good instead
+        # of relying on remembering to do it.
+        run: deno run --allow-read scripts/validate-config-syntax.ts
+      - name: Validate plugin.json against the official schema
+        run: |
+          curl -sL https://www.schemastore.org/claude-code-plugin-manifest.json -o /tmp/plugin-schema.json
+          npx --yes ajv-cli validate -s /tmp/plugin-schema.json -d .claude-plugin/plugin.json
+      - name: Validate marketplace.json against the official schema, if present
+        run: |
+          if [ -f .claude-plugin/marketplace.json ]; then
+            curl -sL https://www.schemastore.org/claude-code-marketplace.json -o /tmp/marketplace-schema.json
+            npx --yes ajv-cli validate -s /tmp/marketplace-schema.json -d .claude-plugin/marketplace.json
+          else
+            echo "No marketplace.json yet — skipping."
+          fi
+
+  plugin-validate:
+    runs-on: ubuntu-latest
+    # Best-effort, not a hard gate yet: running the Claude Code CLI's own
+    # validator non-interactively in CI hasn't been confirmed to work
+    # cleanly without additional auth setup. schema-validate above is the
+    # gate that's actually guaranteed to work; this is a bonus check.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+      - name: Validate plugin structure
+        run: claude plugin validate . --strict
+
+  dist-purity:
+    runs-on: ubuntu-latest
+    # Confirms agents/, hooks/, skills/, commands/, .lsp.json, and
+    # .claude-plugin/ never leak into the standalone MCP dist — these
+    # have no MCP equivalent (no subagent dispatch, no hook execution
+    # engine, no skill/command routing in the MCP protocol itself), so
+    # their presence would be dead weight at best and a misleading
+    # implication of support at worst. Checked structurally, not just
+    # documented, per "truly not implemented at runtime."
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the MCP dist
+        run: sh scripts/build-mcp-dist.sh
+      - name: Assert forbidden paths are absent
+        run: |
+          FORBIDDEN="agents hooks skills commands .lsp.json .claude-plugin"
+          FAIL=0
+          for p in $FORBIDDEN; do
+            if [ -e "dist/parallax-threejs-mcp/$p" ]; then
+              echo "FAIL: $p should not exist in the MCP dist"
+              FAIL=1
+            fi
+          done
+          if [ "$FAIL" -eq 1 ]; then
+            echo ""
+            echo "One or more Claude-Code-only paths leaked into the MCP dist."
+            exit 1
+          fi
+          echo "Dist purity check passed — no Claude-Code-only paths present."

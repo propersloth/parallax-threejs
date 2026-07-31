@@ -1,0 +1,35 @@
+name: Extended Tests
+
+# Lane 2 of the testing model: anything needing a real (headless,
+# throwaway) browser spin-up. Deliberately NOT triggered on pull_request
+# — the local/PR-facing suite (ci.yml's `test` job) needs to stay cheap
+# enough that running it is "worth the commit," not a tax on every push
+# to a feature branch. This lane carries the fuller story instead, on its
+# own cadence: after merge, and on a schedule, so drift or flakiness
+# surfaces on a predictable rhythm without slowing down anyone's PR loop.
+#
+# Nothing here duplicates Lane 1 — these tests specifically exercise the
+# browser-interaction glue (live-scene.ts's page.evaluate() calls,
+# capture.ts's step-dispatch), not logic Lane 1 already covers.
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * 1,4' # twice weekly — Monday and Thursday, 06:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  extended:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Install Playwright browsers
+        run: deno run -A npm:playwright install chromium --with-deps
+      - name: Run Lane 2 tests
+        run: deno test --allow-net --allow-read --allow-write --allow-env --allow-run templates/test/visual/lib/capture_test.ts templates/scripts/lib/live-scene_test.ts

@@ -1,0 +1,28 @@
+#!/usr/bin/env sh
+# Local mirror of ci.yml's Lane 1 job — same checks, running before the
+# commit lands instead of waiting for a remote CI run to tell you. Not
+# installed automatically; git doesn't discover hooks outside
+# .git/hooks/ without explicit config. One-time setup per clone:
+#
+#   git config core.hooksPath .githooks
+#
+# (see CONTRIBUTING.md). Deliberately Lane 1 only, not Lane 2 — a
+# pre-commit hook that launches a browser on every commit would violate
+# the exact "worth the commute" cost bar this whole lane split exists
+# for. Bypassable per git's normal behavior via `git commit --no-verify`
+# if you genuinely need to.
+set -e
+
+echo "== deno fmt --check =="
+deno fmt --check scripts/ hooks/ templates/
+
+echo "== deno lint =="
+deno lint scripts/ hooks/ templates/
+
+echo "== config syntax (JSON/YAML) =="
+deno run --allow-read scripts/validate-config-syntax.ts
+
+echo "== deno test (Lane 1) =="
+deno test --allow-run=git --allow-read --allow-write --ignore=templates/test/visual/lib/capture_test.ts,templates/scripts/lib/live-scene_test.ts scripts/ hooks/ templates/
+
+echo "Pre-commit checks passed."

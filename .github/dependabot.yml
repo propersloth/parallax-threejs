@@ -1,0 +1,18 @@
+version: 2
+updates:
+  # Scans action version pins in the workflow files above (actions/checkout,
+  # denoland/setup-deno, github/codeql-action, etc.) — this works cleanly
+  # regardless of language/runtime.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  # NOT included: an npm ecosystem entry for the npm:playwright,
+  # npm:pngjs, npm:pixelmatch specifiers used inline in the Deno scripts.
+  # Dependabot's npm ecosystem scanner expects a package.json/lockfile,
+  # which this project doesn't have — Deno resolves those specifiers
+  # itself. This is a real, currently-open gap in dependency auditing,
+  # not something quietly worked around. A `deno.lock` could be generated
+  # and checked in, but a turnkey CVE-scanner against it wasn't confirmed
+  # to exist — worth investigating before assuming this is fully covered.
