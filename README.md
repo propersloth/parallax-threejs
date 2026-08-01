@@ -149,6 +149,24 @@ already cover what those would duplicate.
 - **GLSL/LSP diagnostics not appearing** — check `/plugin` → Errors for a
   missing-binary message before assuming `.lsp.json` is misconfigured;
   `shader_language_server` has to be on PATH separately.
+- **TS/JS LSP not installed** — the official `typescript-lsp` plugin
+  ships no binary; install it separately: `npm install -g
+  typescript-language-server typescript`.
+- **TS/JS LSP fails with "Could not find a valid TypeScript
+  installation"** even though `typescript` is a real local dependency of
+  the project you're editing — confirmed (UAT finding #7) this is Claude
+  Code's own LSP client rooting the server at your session's workspace
+  directory, not the specific file's actual project root; verified
+  directly by driving `typescript-language-server`'s `initialize`
+  handshake by hand with different `rootUri` values — it succeeds when
+  rooted at the file's real project and fails with this exact message
+  when rooted anywhere else, regardless of whether that other project
+  has `typescript` installed. Not a bug in `typescript-language-server`
+  itself, and not something this plugin's own code can influence (it
+  doesn't control how Claude Code roots LSP servers). If you hit this,
+  make sure your Claude Code session's own working directory is the
+  TypeScript project you need diagnostics for, not a parent or sibling
+  directory.
 - **`/checkpoint` or `/sweep` errors resolving an object** — your
   prototype needs `window.scene = scene` exposed somewhere; nothing in
   `scripts/` can resolve anything without it.
