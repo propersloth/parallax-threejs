@@ -95,21 +95,19 @@ Actions → **Release** → **Run workflow**:
 
 What happens, in order (see `release.yml`'s `release` job):
 
-1. `NPM_TOKEN` presence checked first, before anything else runs —
-   fails immediately if it's missing, rather than after later steps
-   have already changed state.
-2. Full CI gate re-runs — type-check, format, lint, config-syntax
+1. Full CI gate re-runs — type-check, format, lint, config-syntax
    validation, Lane 1 + Lane 2 tests, `plugin.json` schema validation.
    Never skipped, regardless of mode.
-3. New version computed: `0.3.16` + minor bump → `0.4.0`.
-4. `plugin.json`, `package.json`, and the `parallax-threejs` marketplace
+2. New version computed: `0.3.16` + minor bump → `0.4.0`.
+3. `plugin.json`, `package.json`, and the `parallax-threejs` marketplace
    entry's version field all get `0.4.0`.
-5. Commit `chore(release): v0.4.0 [skip ci]` pushed directly to `main`.
-6. Git tag `v0.4.0` created and pushed.
-7. Dist zip built, GitHub Release `v0.4.0` created **with
-   `--prerelease`**.
-8. `npm publish --access public --tag next` — publishes `0.4.0` to the
-   registry, but explicitly *not* under `latest`.
+4. Commit `chore(release): v0.4.0 [skip ci]` pushed directly to `main`.
+5. Git tag `v0.4.0` created and pushed.
+6. GitHub Release `v0.4.0` created **with `--prerelease`**.
+7. `npm publish --access public --provenance --tag next` — publishes
+   `0.4.0` to the registry under `next`, not `latest`. Authenticates via
+   npm Trusted Publishing (OIDC), not a token — see the Safety Notes
+   below for why, and for `promote`'s different situation.
 
 Resulting state:
 
@@ -176,22 +174,21 @@ Actions → **Release** → **Run workflow**:
 What happens (see `release.yml`'s `promote` job) — deliberately **no
 build, no test gate, no new version**:
 
-1. `NPM_TOKEN` presence checked first, same reasoning as the `release`
-   job — this job's own npm step already runs before any state change,
-   so this is purely for a clearer error message.
-2. Validates `promote_version` was provided and looks like a plain
+1. Validates `promote_version` was provided and looks like a plain
    `X.Y.Z` version.
-3. Confirms `0.4.0` is actually the package's *current* `next` release
+2. Confirms `0.4.0` is actually the package's *current* `next` release
    (`npm view @propersloth/parallax-threejs dist-tags.next`) — fails
    loudly if it isn't, rather than promoting the wrong build.
-4. Confirms git tag `v0.4.0` exists.
-5. `npm dist-tag add @propersloth/parallax-threejs@0.4.0 latest` — moves
-   the `latest` pointer. No new tarball is uploaded.
-6. `parallax-threejs-stable` marketplace entry is created (first ever
+3. Confirms git tag `v0.4.0` exists.
+4. `npm dist-tag add @propersloth/parallax-threejs@0.4.0 latest` — moves
+   the `latest` pointer. No new tarball is uploaded. **This step alone
+   is allowed to fail** (`continue-on-error`) — see the Safety Notes
+   below for why, and what happens when it does.
+5. `parallax-threejs-stable` marketplace entry is created (first ever
    promotion) or updated, `ref` set to `v0.4.0` — the *same* tag from
-   Step 1, not a new one.
-7. `gh release edit v0.4.0 --prerelease=false --latest` — the *existing*
-   `v0.4.0` release is relabeled, not replaced.
+   Step 1, not a new one. Runs regardless of step 4's outcome.
+6. `gh release edit v0.4.0 --prerelease=false --latest` — the *existing*
+   `v0.4.0` release is relabeled, not replaced. Also runs regardless.
 
 Resulting state:
 
@@ -272,17 +269,29 @@ for real before it became everyone's default install.
 > before proceeding, not to bypass the check.
 
 > [!WARNING]
-> `npm publish` (used by `next` and `direct-stable`) and `npm dist-tag
-> add` (used by `promote`) both require an `NPM_TOKEN` repository
-> secret — an npm **Automation** token specifically, so CI doesn't hit
-> an interactive 2FA prompt. Configured under Settings → Secrets and
-> variables → Actions. Every mode's job now checks this is set as its
-> own first real action, before the build/test gate or any
-> state-changing step runs — so a missing token fails the run
-> immediately and cleanly, with nothing to clean up afterward, rather
-> than surfacing only at the final `Publish to npm` step after a
-> version-bump commit, git tag, and GitHub Release had already been
-> pushed.
+> **`npm publish` (used by `next` and `direct-stable`) and `npm dist-tag
+> add` (used by `promote`) now have two different authentication stories
+> — this is a real asymmetry, not an oversight.**
+>
+> `npm publish` uses **npm Trusted Publishing (OIDC)** — no token at all,
+> authenticated via the workflow's own `id-token: write` permission and a
+> Trusted Publisher configured on the package's npmjs.com settings page
+> (one-time, out of band, not in this repo). This replaced an `NPM_TOKEN`-
+> based approach on 2026-08-01, after npm's own tightened 2FA-for-
+> publishing policy made a working CI token impractical (the "bypass 2FA"
+> option on granular access tokens either doesn't render or doesn't take
+> effect, per multiple open npm CLI bug reports as of this writing).
+>
+> `npm dist-tag add` has **no OIDC support at all** — npm has stated no
+> timeline for adding it. `promote`'s dist-tag step still tries an
+> `NPM_TOKEN` if one exists, but is allowed to fail
+> (`continue-on-error`): the rest of `promote` (un-marking the GitHub
+> Release, creating/updating the stable marketplace entry) doesn't need
+> npm auth and proceeds regardless. If it fails, the job prints the exact
+> command to run yourself, interactively, from a machine with 2FA-enabled
+> npm auth: `npm dist-tag add <pkg>@<version> latest`. This is a real,
+> currently-open gap in npm's own tooling, not something fixable from
+> this repo — revisit if npm ever adds OIDC dist-tag support.
 
 ---
 

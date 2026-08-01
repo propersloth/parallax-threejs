@@ -79,14 +79,14 @@ jobs:
   release:
     if: github.event.inputs.mode != 'promote'
     runs-on: ubuntu-latest
-    # id-token: write is npm provenance's own requirement (OIDC-based --
-    # npm publish --provenance uses this to attest the package was built
-    # by this exact workflow run, not to authenticate to npm itself, which
-    # still goes through NODE_AUTH_TOKEN separately). Job-level, not
-    # workflow-level, since promote never publishes and doesn't need it --
-    # least privilege. Overriding permissions at job level replaces rather
-    # than extends the workflow-level block, so contents: write has to be
-    # repeated here too.
+    # id-token: write does double duty here: it's both npm provenance's
+    # requirement and, as of 2026-08-01, how `npm publish` itself
+    # authenticates via Trusted Publishing (OIDC) -- no NPM_TOKEN secret
+    # involved in this job at all anymore (see "Publish to npm" below for
+    # why). Job-level, not workflow-level, since promote doesn't publish
+    # and doesn't need it -- least privilege. Overriding permissions at job
+    # level replaces rather than extends the workflow-level block, so
+    # contents: write has to be repeated here too.
     permissions:
       contents: write
       id-token: write
@@ -116,28 +116,20 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-deno-
 
-      # registry-url here is what makes `npm publish` later pick up
-      # NODE_AUTH_TOKEN automatically (it writes a scoped .npmrc) — this
-      # isn't just "have Node available," ubuntu-latest already has that.
+      # registry-url here matters for npm CLI's OIDC/trusted-publishing
+      # detection, not for a token — this repo no longer authenticates npm
+      # publish with a secret at all (see "Publish to npm" below).
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           registry-url: "https://registry.npmjs.org"
 
-      # Fail fast, before the build/test gate or any state-changing step
-      # runs, if this release can't actually finish. Without this check,
-      # a missing token only surfaced at the very last step (Publish to
-      # npm) — by then the version-bump commit, git tag, and GitHub
-      # Release had already been pushed, leaving real inconsistent state
-      # (tag + release, no matching npm package) that needed manual
-      # cleanup. Checking here turns that into a clean, immediate failure.
-      - name: Verify NPM_TOKEN is configured
-        if: hashFiles('package.json') != ''
-        run: |
-          if [ -z "${{ secrets.NPM_TOKEN }}" ]; then
-            echo "::error::NPM_TOKEN secret is not set -- required for npm publish. Configure an npm Automation token under Settings > Secrets and variables > Actions before running this workflow."
-            exit 1
-          fi
+      # Trusted publishing (OIDC) requires npm CLI >= 11.5.1 -- Node 22's
+      # bundled npm isn't reliably that new, and getting this wrong fails
+      # silently as a fallback-to-no-auth attempt rather than a clear
+      # error, so upgrade explicitly rather than trust whatever ships.
+      - name: Ensure npm is new enough for trusted publishing
+        run: npm install -g npm@latest
 
       # Same checks as ci.yml, re-run here as a gate — a release can never
       # ship something that hasn't been re-verified at release time, even
@@ -290,19 +282,23 @@ jobs:
             --generate-notes \
             $PRERELEASE_FLAG
 
-      # Requires an NPM_TOKEN repo secret (an npm "Automation" token, so it
-      # works without 2FA prompts in CI) — the "Verify NPM_TOKEN is
-      # configured" step earlier in this job already fails the run
-      # cleanly before this point if it's missing. --access public is
+      # No NPM_TOKEN, deliberately: this uses npm Trusted Publishing (OIDC)
+      # instead of a token, via the job's id-token: write permission above.
+      # Switched off token-based auth on 2026-08-01 after npm's own tightened
+      # 2FA-for-publishing policy made a working CI token impractical (no
+      # working bypass-2FA option was findable in the current granular-token
+      # UI). Requires a Trusted Publisher configured on npmjs.com for this
+      # package, pointing at this repo + this workflow filename + branch --
+      # done once, out of band, not in this file. --access public is
       # required for a scoped package's first publish (npm defaults scoped
       # packages to private, which would otherwise need a paid plan).
       #
-      # --provenance attests (via OIDC, hence the job's id-token: write
-      # permission above) that this exact tarball was built by this exact
-      # workflow run from this exact commit — the npm registry then shows
-      # a verified "Provenance" badge on the package page. Requires
-      # publishing from a supported CI provider (GitHub Actions qualifies)
-      # with npm CLI >= 9.5; Node 22 here bundles a recent-enough npm.
+      # --provenance attests that this exact tarball was built by this exact
+      # workflow run from this exact commit — the npm registry then shows a
+      # verified "Provenance" badge on the package page. Kept explicit
+      # rather than relying on trusted publishing's claimed automatic
+      # generation, per a real-world report that the automatic path doesn't
+      # reliably fire without it.
       #
       # --tag is the actual channel enforcement point for npm: publish
       # defaults to tagging as `latest` (i.e. what everyone gets on a
@@ -313,10 +309,13 @@ jobs:
       # implicit default) is deliberate too — it's supposed to move that
       # tag, so it says so, rather than depending on unstated default
       # behavior matching intent by coincidence.
+      #
+      # promote's npm dist-tag add step is NOT covered by this migration --
+      # npm has no OIDC support for dist-tag management (no timeline for
+      # it, per npm's own community discussion), only for publish itself.
+      # See that job's own comments for how it degrades gracefully instead.
       - name: Publish to npm
         if: hashFiles('package.json') != ''
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           NPM_TAG="next"
           if [ "${{ github.event.inputs.mode }}" == "direct-stable" ]; then
@@ -348,18 +347,6 @@ jobs:
         with:
           node-version: 22
           registry-url: "https://registry.npmjs.org"
-
-      # promote's own npm step already runs before any state-changing
-      # step (dist-tag add, then the marketplace commit, then the release
-      # edit), so a missing token here already fails clean structurally.
-      # Checked explicitly anyway, this early, purely for a clear error
-      # message instead of relying on npm's own auth failure output.
-      - name: Verify NPM_TOKEN is configured
-        run: |
-          if [ -z "${{ secrets.NPM_TOKEN }}" ]; then
-            echo "::error::NPM_TOKEN secret is not set -- required for npm dist-tag add. Configure an npm Automation token under Settings > Secrets and variables > Actions before running this workflow."
-            exit 1
-          fi
 
       - name: Validate promote_version was provided and looks like a version
         run: |
@@ -396,12 +383,41 @@ jobs:
       # The actual promotion: moves the npm latest tag to an already-
       # published version. No new tarball, no new version number -- this
       # is npm's own supported mechanism for exactly this operation.
+      #
+      # continue-on-error, deliberately: unlike "Publish to npm" in the
+      # release job (migrated to OIDC/Trusted Publishing on 2026-08-01),
+      # npm has no OIDC support for dist-tag management at all -- no
+      # timeline for it either, per npm's own community discussion. This
+      # step still tries with whatever NPM_TOKEN exists (if any), but a
+      # working bypass-2FA token wasn't obtainable through npm's current
+      # granular-token UI as of this comment (the option either doesn't
+      # render or doesn't take effect -- see this repo's release notes/
+      # issue tracker for the exact npm-side bug reports). Rather than
+      # block the two things below that DON'T need npm auth (un-marking
+      # the GitHub Release, creating the stable marketplace entry) on an
+      # npm-side limitation outside this repo's control, this degrades to
+      # a manual one-line fallback instead of failing the whole job. If
+      # npm ever adds OIDC dist-tag support, this starts working
+      # automatically with zero further changes here.
       - name: Move the npm latest tag to the promoted version
+        id: npm-dist-tag
+        continue-on-error: true
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           PKG=$(jq -r .name package.json)
           npm dist-tag add "$PKG@$PROMOTE_VERSION" latest
+
+      - name: Report npm dist-tag result
+        run: |
+          PKG=$(jq -r .name package.json)
+          if [ "${{ steps.npm-dist-tag.outcome }}" == "success" ]; then
+            echo "npm latest dist-tag successfully moved to $PROMOTE_VERSION."
+          else
+            echo "::warning::Could not move npm's latest dist-tag automatically (npm has no OIDC support for dist-tag management, and no working CI token was configured). Run this yourself, interactively, from a machine with 2FA-enabled npm auth:"
+            echo "::warning::npm dist-tag add $PKG@$PROMOTE_VERSION latest"
+            echo "The rest of promote (GitHub Release, stable marketplace entry) doesn't need npm auth and will proceed regardless."
+          fi
 
       - name: Point the stable-pinned marketplace entry at the promoted tag
         run: |
