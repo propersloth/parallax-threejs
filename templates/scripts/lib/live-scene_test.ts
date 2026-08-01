@@ -90,7 +90,7 @@ Deno.test("collectConsoleMessages captures messages emitted after attachment", a
 });
 
 Deno.test("attachToLiveScene connects to a real running browser and returns its page", async () => {
-  const port = 19222; // fixed test port, distinct from the real 9222 default
+  const port = 19222; // fixed test port, distinct from the real 9223 default
   const browser = await chromium.launch({
     args: [`--remote-debugging-port=${port}`],
   });
@@ -105,8 +105,41 @@ Deno.test("attachToLiveScene connects to a real running browser and returns its 
   Deno.env.delete("BRIDGE_PORT");
 });
 
-Deno.test("attachToLiveScene throws a clear error when nothing is listening on the port", async () => {
-  Deno.env.set("BRIDGE_PORT", "19223"); // nothing running here
-  await assertRejects(() => attachToLiveScene());
-  Deno.env.delete("BRIDGE_PORT");
+Deno.test("attachToLiveScene launches its own persistent Chromium when nothing is listening on the port (UAT finding #9)", async () => {
+  const port = 19224; // fixed test port, nothing running here beforehand
+  const tempCwd = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+
+  Deno.env.set("BRIDGE_PORT", String(port));
+  Deno.env.set("DEV_PORT", "1"); // nothing needs to actually be there for this test
+  Deno.chdir(tempCwd);
+
+  let attached: Awaited<ReturnType<typeof attachToLiveScene>> | undefined;
+  try {
+    attached = await attachToLiveScene();
+    // It's a real, separate Chromium process launched on demand, not
+    // something the test set up itself — confirms the auto-launch path,
+    // not just a lucky connection to a pre-existing browser.
+    assertEquals(typeof attached.page, "object");
+
+    // A second call within the same "session" should reuse the same
+    // browser rather than launching a duplicate on the now-occupied port.
+    const reattached = await attachToLiveScene();
+    assertEquals(reattached.page.url(), attached.page.url());
+    await reattached.browser.close();
+  } finally {
+    // Production code deliberately never exposes a way to kill the
+    // persistent browser it launches (callers must never do that to a
+    // shared window) — so the test reaches for the CDP protocol directly
+    // to clean up the process it caused to exist, rather than leaking a
+    // stray Chromium after `deno test` exits.
+    if (attached) {
+      const session = await attached.browser.newBrowserCDPSession();
+      await session.send("Browser.close").catch(() => {});
+    }
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempCwd, { recursive: true }).catch(() => {});
+    Deno.env.delete("BRIDGE_PORT");
+    Deno.env.delete("DEV_PORT");
+  }
 });

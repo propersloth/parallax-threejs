@@ -2,21 +2,23 @@
   "version": "0.2.0",
   "configurations": [
     {
-      // Attaches to the SAME browser tab live-scene.ts's attachToLiveScene()
-      // connects to via CDP — not a fresh browser VS Code launches itself.
-      // That's deliberate, matching the whole "shared sight" premise this
-      // plugin is built around (see live-scene.ts's own header comment):
-      // set a breakpoint here, interact with the live page, and it hits
-      // in the exact session Claude/checkpoint/sweep are also looking at.
+      // Attaches to the SAME persistent Chromium tab live-scene.ts's
+      // attachToLiveScene() owns — not a fresh browser VS Code launches
+      // itself. That's deliberate, matching the whole "shared sight"
+      // premise this plugin is built around (see live-scene.ts's own
+      // header comment): set a breakpoint here, interact with the live
+      // page, and it hits in the exact session Claude/checkpoint/sweep
+      // are also driving.
       //
-      // Requires something already listening on this port — the dev
-      // server's browser tab, opened with --remote-debugging-port=9222
-      // (or whatever BRIDGE_PORT is set to; change the port below to
-      // match if you've overridden the default).
+      // Requires that tab to already exist — run any interactive command
+      // (/checkpoint, /sweep, ...) at least once first; attachToLiveScene()
+      // launches it on demand at BRIDGE_PORT (default 9223 — deliberately
+      // not 9222, which is threejs-devtools-mcp's own unrelated bridge
+      // default; change the port below to match if you've overridden it).
       "type": "chrome",
       "request": "attach",
       "name": "Attach to live Chromium (BRIDGE_PORT)",
-      "port": 9222,
+      "port": 9223,
       "webRoot": "${workspaceFolder}"
     },
     {

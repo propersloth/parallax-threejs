@@ -57,16 +57,11 @@ results before cutting the tag — see the UAT runbook.
 ### Known limitations at time of writing
 - Real-hardware UAT (2026-07-31, Raspberry Pi 5, against `ceres`, a real
   npm-based three.js prototype) found 13 findings, 4 fixed live during
-  the run; 3 more (#8, #12, #13) fixed post-run, 6 still open — see
+  the run; 4 more (#8, #12, #13, #9) fixed post-run, 5 still open — see
   UAT-RUNBOOK.md's Sign-off section and
   `aidlc-docs/construction/build-and-test/uat-release-blockers.md` for
   full detail. Highest-severity open finding, needing a real code fix
   before 1.0.0:
-  - `/checkpoint`, `/sweep`, `/replay`, `/diff-checkpoints` cannot
-    attach to the browser at all — `live-scene.ts`'s Playwright
-    `connectOverCDP` assumption doesn't match how `chrome-devtools-mcp`
-    actually launches Chrome (`--remote-debugging-pipe`, no CDP TCP
-    port).
   - `check-shader-bindings.ts` produced a 28/28 false-positive rate on
     its first real-world run — it doesn't recognize the
     `onBeforeCompile` + `shader.uniforms.X = ...` binding idiom, only
