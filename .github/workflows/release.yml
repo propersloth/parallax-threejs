@@ -96,6 +96,21 @@ jobs:
           node-version: 22
           registry-url: "https://registry.npmjs.org"
 
+      # Fail fast, before the build/test gate or any state-changing step
+      # runs, if this release can't actually finish. Without this check,
+      # a missing token only surfaced at the very last step (Publish to
+      # npm) — by then the version-bump commit, git tag, and GitHub
+      # Release had already been pushed, leaving real inconsistent state
+      # (tag + release, no matching npm package) that needed manual
+      # cleanup. Checking here turns that into a clean, immediate failure.
+      - name: Verify NPM_TOKEN is configured
+        if: hashFiles('package.json') != ''
+        run: |
+          if [ -z "${{ secrets.NPM_TOKEN }}" ]; then
+            echo "::error::NPM_TOKEN secret is not set -- required for npm publish. Configure an npm Automation token under Settings > Secrets and variables > Actions before running this workflow."
+            exit 1
+          fi
+
       # Same checks as ci.yml, re-run here as a gate — a release can never
       # ship something that hasn't been re-verified at release time, even
       # though the merge that led here already passed CI once.
@@ -214,9 +229,9 @@ jobs:
             $PRERELEASE_FLAG
 
       # Requires an NPM_TOKEN repo secret (an npm "Automation" token, so it
-      # works without 2FA prompts in CI) — not set up yet as of this
-      # workflow change; this step will fail until that's added under
-      # Settings > Secrets and variables > Actions. --access public is
+      # works without 2FA prompts in CI) — the "Verify NPM_TOKEN is
+      # configured" step earlier in this job already fails the run
+      # cleanly before this point if it's missing. --access public is
       # required for a scoped package's first publish (npm defaults scoped
       # packages to private, which would otherwise need a paid plan).
       #
@@ -259,6 +274,18 @@ jobs:
         with:
           node-version: 22
           registry-url: "https://registry.npmjs.org"
+
+      # promote's own npm step already runs before any state-changing
+      # step (dist-tag add, then the marketplace commit, then the release
+      # edit), so a missing token here already fails clean structurally.
+      # Checked explicitly anyway, this early, purely for a clear error
+      # message instead of relying on npm's own auth failure output.
+      - name: Verify NPM_TOKEN is configured
+        run: |
+          if [ -z "${{ secrets.NPM_TOKEN }}" ]; then
+            echo "::error::NPM_TOKEN secret is not set -- required for npm dist-tag add. Configure an npm Automation token under Settings > Secrets and variables > Actions before running this workflow."
+            exit 1
+          fi
 
       - name: Validate promote_version was provided and looks like a version
         run: |
