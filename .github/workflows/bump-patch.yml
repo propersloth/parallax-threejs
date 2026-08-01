@@ -1,4 +1,4 @@
-name: Auto-bump patch version
+name: Auto-bump
 
 # Fires on every push to main — i.e. every merged PR, per the branch flow
 # this repo uses (feature -> PR -> merge to main). Bumps x.x.N only.
