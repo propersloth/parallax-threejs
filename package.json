@@ -12,6 +12,12 @@
     "url": "https://github.com/propersloth/parallax-threejs.git"
   },
   "homepage": "https://github.com/propersloth/parallax-threejs",
+  "bugs": {
+    "url": "https://github.com/propersloth/parallax-threejs/issues"
+  },
+  "engines": {
+    "node": ">=20"
+  },
   "keywords": [
     "three.js",
     "webgl",

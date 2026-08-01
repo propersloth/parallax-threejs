@@ -15,6 +15,13 @@ Tracking toward the 1.0.0 release. Update this section with real UAT
 results before cutting the tag — see the UAT runbook.
 
 ### Added
+- `SECURITY.md` and `.github/release.yml` (categorizes `--generate-notes`
+  output by PR label — only pays off once PRs actually carry those labels,
+  which isn't an established habit yet).
+- `bugs` and `engines` fields in `package.json`.
+- `npm publish --provenance` — the registry now shows a verified
+  "Provenance" badge, attesting the published tarball was built by this
+  exact GitHub Actions run from this exact commit.
 - npm-based plugin distribution: `package.json`, `npm publish` support, and
   the `parallax-threejs-npm` marketplace entry (installs/updates via the npm
   registry instead of this git repo), alongside the existing git-based
@@ -66,6 +73,19 @@ results before cutting the tag — see the UAT runbook.
 - Pivoted skill distribution — only `qa-visual-test-harness` ships by
   default; general three.js/WebGL knowledge skills are optional, not
   vendored (see `docs/RECOMMENDED-SKILLS.md`).
+- `bump-patch.yml`'s Actions-tab display name shortened to "Auto-bump".
+
+### Removed
+- The custom dist zip attached to every GitHub Release — neither real
+  install path (git-based marketplace clone, npm registry) ever read it;
+  GitHub's own auto-attached source archive links are unaffected.
+
+### Security
+- Every third-party GitHub Action across all workflows is now pinned to a
+  full commit SHA (with a `# vX.Y.Z` comment for readability — Dependabot
+  still tracks and updates these) instead of a mutable version tag, per
+  standard supply-chain hardening practice (OpenSSF Scorecard's
+  "Pinned-Dependencies" check).
 
 ### Fixed
 - `release.yml` had three bugs that would have failed the very first live
@@ -81,9 +101,6 @@ results before cutting the tag — see the UAT runbook.
 - Removed a redundant CodeQL `push` trigger: with `main` PR-gated, every
   merge was being scanned twice (once on the PR, again on the resulting
   merge commit) for no added coverage.
-
-### Changed
-- `bump-patch.yml`'s Actions-tab display name shortened to "Auto-bump".
 
 ### Known limitations at time of writing
 - **On this package's very first release cycle**, npm's `latest` dist-tag
