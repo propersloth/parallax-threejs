@@ -1,12 +1,27 @@
-// Connects to the SAME browser tab the human and Claude are already
-// looking at, via CDP — deliberately not a fresh, isolated browser. The
-// entire point of this plugin is shared sight; a script that quietly
-// launched its own hidden browser would defeat that without anyone
-// noticing until the numbers stopped making sense.
+// Owns a persistent, dedicated Chromium tab for Parallax's interactive
+// commands (checkpoint/sweep/replay/diff-checkpoints) — launched once,
+// left running across invocations, and reused by every subsequent call.
+// That persistence *is* the "shared sight" this plugin is built around:
+// the human watches this one window; every command drives the same tab
+// instead of a fresh, isolated browser per invocation.
 //
-// Real prerequisites — this does not work unconditionally:
-//   - threejs-devtools-mcp's bridge proxy must already be running and
-//     reachable at BRIDGE_PORT (default 9222, per its own advanced.md).
+// Why this isn't "attach to whatever tab is already open" (UAT finding
+// #9 — the original design, confirmed broken two independent ways):
+//   - threejs-devtools-mcp's bridge proxy (BRIDGE_PORT, historically also
+//     defaulted to 9222) is a custom WebSocket bridge for its own MCP
+//     tools, not a CDP endpoint — curling its /json/version proxies
+//     straight through to the dev server and returns ordinary page HTML,
+//     not a CDP version manifest.
+//   - In its default (non-Puppeteer) mode, threejs-devtools-mcp opens the
+//     browser via a plain OS `open`/`xdg-open` call — no debug port of
+//     any kind. chrome-devtools-mcp launches its own Chrome via
+//     --remote-debugging-pipe — a stdio pipe, not a TCP port either.
+//     Neither is reachable via connectOverCDP, regardless of port number.
+// Parallax's own BRIDGE_PORT now defaults to 9223, not 9222 — deliberately
+// distinct from threejs-devtools-mcp's bridge default so the two can run
+// at the same time without one refusing to bind the other's port.
+//
+// Other real prerequisites — this does not work unconditionally:
 //   - The page must expose `window.scene` pointing at the live THREE.Scene.
 //     This is a widely-used three.js debugging convention (several
 //     existing three.js devtools extensions document this same
@@ -18,6 +33,9 @@
 //     need a `.name` set. This is the same "name your objects" convention
 //     threejs-devtools-mcp's own README already recommends.
 //
+// Headed by default so a human can actually watch it — that's the point.
+// Set PARALLAX_HEADLESS=true to run headless instead (CI, no display).
+//
 // Console capture limitation: a listener attached here only sees messages
 // emitted AFTER attachment — no historical scrollback. For full console
 // history, chrome-devtools-mcp's own console tool remains the more
@@ -26,22 +44,238 @@
 
 import { chromium, type Page } from "playwright";
 
+const DEFAULT_BRIDGE_PORT = "9223";
+const DEFAULT_DEV_PORT = "3000";
+
+// Exported for direct unit testing of the collision guard below — the
+// real-world case this exists for (threejs-devtools-mcp's bridge, or any
+// other non-CDP server, answering 200 on this exact path) can't be
+// exercised through attachToLiveScene() itself without also fighting
+// over the same port for the fallback launch, so it's tested in
+// isolation instead.
+export async function isCdpReachable(port: string): Promise<boolean> {
+  try {
+    // Bounded per-request, not just the caller's overall retry budget —
+    // a connection that hangs instead of failing outright would otherwise
+    // make waitForCdpReady's own timeout meaningless.
+    const res = await fetch(`http://localhost:${port}/json/version`, {
+      signal: AbortSignal.timeout(1000),
+    });
+    if (!res.ok) return false;
+    // Guard against a non-CDP HTTP server answering 200 on this path too
+    // (e.g. an SPA dev server's catch-all route, or threejs-devtools-mcp's
+    // bridge proxying the request straight through) — only trust it if
+    // the body actually looks like a CDP version manifest.
+    const body = await res.json().catch(() => null);
+    return typeof body?.webSocketDebuggerUrl === "string";
+  } catch {
+    return false;
+  }
+}
+
+// 30s, not 15s — observed real Chromium cold-start variance under load
+// during testing (one run took 6s, well above the typical ~1s), and this
+// plugin's named deployment target (Raspberry Pi) is slower than a dev
+// machine. The crash-detection race above means a genuine early failure
+// still surfaces fast regardless of this ceiling — this only affects how
+// long a slow-but-healthy startup gets before being treated as stuck.
+async function waitForCdpReady(port: string, timeoutMs = 30000): Promise<void> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    if (await isCdpReachable(port)) return;
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  throw new Error(
+    `Timed out after ${timeoutMs}ms waiting for Parallax's Chromium to ` +
+      `open a CDP port at :${port}. Check for a stray Chrome process ` +
+      `already holding that port, or set BRIDGE_PORT to an unused one.`,
+  );
+}
+
+// Empirically captured from Playwright's own chromium.launch() (inspected
+// the resulting process's actual command line) rather than guessed —
+// launching the raw binary directly means Playwright's substantial
+// internal default-args list is skipped unless reproduced here. Excludes
+// anything headless-only, security-relevant (e.g. --no-sandbox), or that
+// would hide the window (e.g. --no-startup-window) — those stay Chrome's
+// own OS-appropriate default since this tab is meant to be headed and
+// visible. --disable-dev-shm-usage is the single biggest win of this
+// list on constrained/containerized targets (Raspberry Pi, Docker):
+// Chrome's default /dev/shm size assumption crashes it otherwise.
+const STABILITY_ARGS = [
+  "--disable-field-trial-config",
+  "--disable-background-networking",
+  "--disable-background-timer-throttling",
+  "--disable-backgrounding-occluded-windows",
+  "--disable-back-forward-cache",
+  "--disable-breakpad",
+  "--disable-client-side-phishing-detection",
+  "--disable-component-extensions-with-background-pages",
+  "--disable-component-update",
+  "--disable-default-apps",
+  "--disable-dev-shm-usage",
+  "--disable-extensions",
+  "--disable-hang-monitor",
+  "--disable-ipc-flooding-protection",
+  "--disable-popup-blocking",
+  "--disable-prompt-on-repost",
+  "--disable-renderer-backgrounding",
+  "--disable-updater-scheduler",
+  "--force-color-profile=srgb",
+  "--metrics-recording-only",
+  "--password-store=basic",
+  "--use-mock-keychain",
+  "--no-service-autorun",
+  "--disable-search-engine-choice-screen",
+  "--disable-infobars",
+  "--disable-sync",
+];
+
+// Longer than waitForCdpReady's own 30s budget — if a lock is still
+// there after this long, whatever created it plausibly crashed instead
+// of finishing, so it's treated as stale rather than blocked on forever.
+const LOCK_STALE_MS = 45000;
+
+// Guards against two interactive commands invoked in close succession
+// both observing isCdpReachable() === false and both trying to spawn
+// Chrome onto the same port/profile dir. A real, atomic, cross-process
+// mutex — Deno processes don't share memory, so this has to be a
+// filesystem lock, not an in-process one.
+async function acquireLaunchLock(lockPath: string): Promise<boolean> {
+  try {
+    const file = await Deno.open(lockPath, { createNew: true, write: true });
+    file.close();
+    return true;
+  } catch (err) {
+    if (!(err instanceof Deno.errors.AlreadyExists)) throw err;
+  }
+  try {
+    const info = await Deno.stat(lockPath);
+    if (info.mtime && Date.now() - info.mtime.getTime() > LOCK_STALE_MS) {
+      await Deno.remove(lockPath).catch(() => {});
+      return await acquireLaunchLock(lockPath);
+    }
+  } catch {
+    // Lock disappeared between our check and now — fine, treat as not ours.
+  }
+  return false;
+}
+
+// Spawned as a raw OS process (not via chromium.launch()) and explicitly
+// detached — Playwright's own launch() keeps a handle open that blocks
+// the calling Deno process from exiting, and kills the browser on that
+// exit, which would defeat the whole point of a persistent shared tab.
+async function launchPersistentChromium(
+  port: string,
+  devPort: string,
+): Promise<void> {
+  const executablePath = chromium.executablePath();
+  try {
+    await Deno.stat(executablePath);
+  } catch {
+    throw new Error(
+      `Playwright's Chromium isn't installed (expected at ` +
+        `${executablePath}). Run \`deno run -A npm:playwright install ` +
+        `chromium\` once, then retry.`,
+    );
+  }
+
+  const parallaxDir = `${Deno.cwd()}/.parallax`;
+  await Deno.mkdir(parallaxDir, { recursive: true });
+  const lockPath = `${parallaxDir}/chrome-launch.lock`;
+
+  if (!(await acquireLaunchLock(lockPath))) {
+    // Someone else is already launching — wait for them rather than
+    // racing a second Chrome onto the same port/profile dir.
+    await waitForCdpReady(port);
+    return;
+  }
+
+  try {
+    // Re-check now that the lock is ours: another invocation may have
+    // finished launching between attachToLiveScene()'s first check and
+    // this one.
+    if (await isCdpReachable(port)) return;
+
+    const userDataDir = `${Deno.cwd()}/.parallax/chrome-profile`;
+    const headless = Deno.env.get("PARALLAX_HEADLESS") === "true";
+
+    const command = new Deno.Command(executablePath, {
+      args: [
+        `--remote-debugging-port=${port}`,
+        ...(headless ? ["--headless=new"] : []),
+        ...STABILITY_ARGS,
+        "--no-first-run",
+        "--no-default-browser-check",
+        `--user-data-dir=${userDataDir}`,
+        `http://localhost:${devPort}`,
+      ],
+      stdin: "null",
+      stdout: "null",
+      // Piped, not "null" — read to diagnose an early crash (missing
+      // shared libs, sandbox failure, no display with PARALLAX_HEADLESS
+      // unset, etc.), which is otherwise invisible: the caller just burns
+      // the full waitForCdpReady timeout with no indication anything died.
+      // Verified separately that a piped-then-canceled stderr doesn't harm
+      // this process once it's confirmed healthy and detached
+      // (child.unref() below) — only the "exited" branch actually reads
+      // it to completion, which is safe precisely because the process is
+      // already gone by then.
+      stderr: "piped",
+    });
+    const child = command.spawn();
+    child.unref();
+
+    const exited = child.status.then((status) => ({
+      outcome: "exited" as const,
+      status,
+    }));
+    const ready = waitForCdpReady(port).then(() => ({
+      outcome: "ready" as const,
+    }));
+    const result = await Promise.race([ready, exited]);
+
+    if (result.outcome === "exited") {
+      const stderrText = await new Response(child.stderr).text().catch(() =>
+        ""
+      );
+      throw new Error(
+        `Parallax's Chromium exited immediately (code ${result.status.code}) ` +
+          `instead of opening a CDP port at :${port}.` +
+          (stderrText.trim() ? ` stderr: ${stderrText.trim()}` : ""),
+      );
+    }
+
+    // Still running — stop holding the pipe open rather than leaving it
+    // dangling for a process meant to outlive this script.
+    await child.stderr.cancel().catch(() => {});
+  } finally {
+    await Deno.remove(lockPath).catch(() => {});
+  }
+}
+
 export async function attachToLiveScene(): Promise<
   { browser: Awaited<ReturnType<typeof chromium.connectOverCDP>>; page: Page }
 > {
-  // Read per-call, not at module scope — this must reflect the env var
-  // at call time (tests set it right before calling), not whatever it
-  // was when this module first loaded.
-  const bridgePort = Deno.env.get("BRIDGE_PORT") ?? "9222";
+  // Read per-call, not at module scope — this must reflect the env vars
+  // at call time (tests set them right before calling), not whatever they
+  // were when this module first loaded.
+  const bridgePort = Deno.env.get("BRIDGE_PORT") ?? DEFAULT_BRIDGE_PORT;
+  const devPort = Deno.env.get("DEV_PORT") ?? DEFAULT_DEV_PORT;
+
+  if (!(await isCdpReachable(bridgePort))) {
+    await launchPersistentChromium(bridgePort, devPort);
+  }
+
   const browser = await chromium.connectOverCDP(
     `http://localhost:${bridgePort}`,
   );
   const contexts = browser.contexts();
   if (contexts.length === 0) {
     throw new Error(
-      `No browser context found at :${bridgePort} — is the dev server ` +
-        `and threejs-devtools-mcp's bridge actually running? This script ` +
-        `attaches to an existing session, it does not start one.`,
+      `No browser context found at :${bridgePort} even after launching ` +
+        `Parallax's own Chromium there — this shouldn't happen; please ` +
+        `report it.`,
     );
   }
   const pages = contexts[0].pages();
