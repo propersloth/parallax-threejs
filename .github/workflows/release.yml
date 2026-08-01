@@ -1,35 +1,65 @@
 name: Release
 
-# Manual only — this is the "at my discretion" trigger. Bumps MINOR by
-# default (x.N.x, resetting patch to 0, per standard semver), but exposes
-# patch/major too since "standard semantic versioning practices" includes
-# both — pick whichever fits the actual change when you run this.
+# Manual only — this is the "at my discretion" trigger.
 #
-# bump_type and channel are deliberately two separate inputs, not one --
-# "how much did the number change" and "who should see this" are
-# orthogonal decisions. channel governs three things: the npm dist-tag
-# (latest vs. next), whether the GitHub Release is marked prerelease,
-# and whether the stable-pinned git marketplace entry
-# (parallax-threejs-stable) gets its ref moved to this release. A `next`
-# run still bumps plugin.json/package.json/marketplace.json's versions
-# and still tags/releases on GitHub -- it just doesn't touch the npm
-# `latest` tag or the stable-pinned entry.
+# Three modes, not a stable/next binary — because "cut a fresh release"
+# and "promote an already-tested release to stable" are genuinely
+# different operations, not the same operation with a different label:
 #
-# Deliberately NOT using semver prerelease suffixes (1.0.0-rc.1 etc.) --
-# that would require parsing/incrementing an existing suffix and
-# reasoning about "is this continuing a prerelease cycle or starting a
-# fresh one," real complexity this project doesn't need yet. The
-# consequence worth knowing: don't cut a `next` release at the exact
-# version number you intend to later cut as `stable` (e.g. testing
-# "1.0.0" itself under next) -- npm refuses to publish the same version
-# number twice, even under a different dist-tag. Cut incremental next
-# versions for testing, then a fresh bump straight to the real target
-# when you're ready for stable.
+#   - next          Cut a fresh pre-release: bump the version, build,
+#                    test, tag, publish to npm under the `next` dist-tag,
+#                    GitHub Release marked prerelease.
+#   - direct-stable  Cut a fresh STABLE release with no prior pre-release
+#                    cycle: same as `next` but publishes to npm under
+#                    `latest` and the GitHub Release isn't marked
+#                    prerelease. For changes small/low-risk enough that a
+#                    testing cycle isn't warranted.
+#   - promote        Take an EXISTING, already-published `next` release
+#                    (named via the promote_version input) and relabel it
+#                    stable: `npm dist-tag add` moves the npm `latest`
+#                    pointer to that exact already-published version (no
+#                    rebuild, no republish, no new version number), the
+#                    stable-pinned marketplace entry's ref moves to the
+#                    SAME existing git tag (no new tag), and the existing
+#                    GitHub Release has its prerelease flag cleared (no
+#                    new release).
+#
+# The "promote, don't rebuild" model is the standard release-engineering
+# pattern for exactly this problem (how Docker image promotion, package
+# channel promotion, etc. all work): you build a given set of bits from a
+# given commit exactly once, test that exact artifact, and if it's good,
+# relabel it rather than building it again. Rebuilding a second time
+# under a new label can't actually guarantee "what I tested" and "what I
+# shipped" are the same thing, even when the source hasn't changed — and
+# concretely, npm won't let you publish the same version number twice
+# regardless, which is what motivated this design in the first place.
+#
+# bump_type is used by `next`/`direct-stable` (ignored by `promote`,
+# which reuses the existing version number rather than computing a new
+# one) and is a separate axis from mode: "how much did the number
+# change" and "which release operation is this" are orthogonal.
+#
+# Deliberately NOT using semver prerelease suffixes (1.0.0-rc.1 etc.) for
+# the version numbers themselves — `next` and `direct-stable` both
+# produce plain X.Y.Z numbers. That's fine specifically because
+# `promote` never republishes: the collision this would otherwise risk
+# (testing "1.0.0" under next, then being unable to publish "1.0.0" as
+# stable) doesn't happen, since promoting doesn't call `npm publish`
+# again for that number at all.
 on:
   workflow_dispatch:
     inputs:
+      mode:
+        description: "Release mode"
+        required: true
+        default: "direct-stable"
+        type: choice
+        options:
+          - next
+          - promote
+          - direct-stable
       bump_type:
-        description: "Version bump type"
+        description: "Version bump type (ignored for promote)"
         required: true
         default: "minor"
         type: choice
@@ -37,20 +67,17 @@ on:
           - patch
           - minor
           - major
-      channel:
-        description: "Release channel"
-        required: true
-        default: "stable"
-        type: choice
-        options:
-          - stable
-          - next
+      promote_version:
+        description: "Exact version to promote to stable, e.g. 1.0.0 (required for promote, ignored otherwise)"
+        required: false
+        type: string
 
 permissions:
   contents: write
 
 jobs:
   release:
+    if: github.event.inputs.mode != 'promote'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -115,17 +142,17 @@ jobs:
               .claude-plugin/marketplace.json > tmp.json && mv tmp.json .claude-plugin/marketplace.json
           fi
 
-      # Only on a stable release -- this is the actual "flip the switch"
-      # moment for anyone on the stable git channel. parallax-threejs
-      # ("./") always tracks main regardless of channel, so it needs no
-      # equivalent step; this entry is the one that's supposed to stay
-      # put between stable releases. Upserts (filters out any existing
-      # entry with this name, then appends a fresh one) rather than
-      # requiring the entry to already exist, since there's no stable
-      # release to point at until the first one of these ever runs --
-      # the entry doesn't exist in marketplace.json until then.
+      # Only on a direct-stable release -- a `next` release hasn't been
+      # promoted yet, so the stable channel shouldn't move for it.
+      # parallax-threejs ("./") always tracks main regardless of mode, so
+      # it needs no equivalent step; this entry is the one that's
+      # supposed to stay put between stable releases. Upserts (filters
+      # out any existing entry with this name, then appends a fresh one)
+      # rather than requiring the entry to already exist, since there's
+      # no stable release to point at until the first one of these ever
+      # runs -- the entry doesn't exist in marketplace.json until then.
       - name: Point the stable-pinned marketplace entry at this release
-        if: github.event.inputs.channel == 'stable'
+        if: github.event.inputs.mode == 'direct-stable'
         run: |
           if [ -f .claude-plugin/marketplace.json ]; then
             jq --arg ref "v${{ steps.version.outputs.new_version }}" '
@@ -177,7 +204,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           PRERELEASE_FLAG=""
-          if [ "${{ github.event.inputs.channel }}" != "stable" ]; then
+          if [ "${{ github.event.inputs.mode }}" != "direct-stable" ]; then
             PRERELEASE_FLAG="--prerelease"
           fi
           gh release create "v${{ steps.version.outputs.new_version }}" \
@@ -197,8 +224,8 @@ jobs:
       # defaults to tagging as `latest` (i.e. what everyone gets on a
       # plain `npm install`) unless told otherwise, so a `next` run
       # explicitly tagging `next` is what stops a pre-release from
-      # immediately becoming what stable users receive. A `stable` run
-      # explicitly passing --tag latest (rather than relying on the
+      # immediately becoming what stable users receive. A `direct-stable`
+      # run explicitly passing --tag latest (rather than relying on the
       # implicit default) is deliberate too — it's supposed to move that
       # tag, so it says so, rather than depending on unstated default
       # behavior matching intent by coincidence.
@@ -208,7 +235,104 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           NPM_TAG="next"
-          if [ "${{ github.event.inputs.channel }}" == "stable" ]; then
+          if [ "${{ github.event.inputs.mode }}" == "direct-stable" ]; then
             NPM_TAG="latest"
           fi
           npm publish --access public --tag "$NPM_TAG"
+
+  promote:
+    if: github.event.inputs.mode == 'promote'
+    runs-on: ubuntu-latest
+    # Deliberately short, and does NOT rebuild or re-run the test gate --
+    # the whole point of promoting is that the exact bits being promoted
+    # were already built, published, and tested as a `next` release.
+    # Re-running the build/test steps here would just verify a NEW build
+    # from whatever's currently on main, which isn't what's being
+    # shipped and defeats the purpose (main may have moved since the
+    # next release was cut).
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Validate promote_version was provided and looks like a version
+        run: |
+          V="${{ github.event.inputs.promote_version }}"
+          if [ -z "$V" ]; then
+            echo "::error::promote mode requires the 'promote_version' input -- the exact version currently published under the next dist-tag, e.g. 1.0.0."
+            exit 1
+          fi
+          if ! echo "$V" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::promote_version '$V' doesn't look like a plain X.Y.Z version."
+            exit 1
+          fi
+          echo "PROMOTE_VERSION=$V" >> "$GITHUB_ENV"
+
+      # Refuses to promote anything that isn't actually the package's
+      # current next release -- catches a wrong-version mistake before
+      # touching anything, not after.
+      - name: Confirm this version is the package's current next release
+        run: |
+          PKG=$(jq -r .name package.json)
+          NEXT_VERSION=$(npm view "$PKG" dist-tags.next 2>/dev/null || echo "")
+          if [ "$NEXT_VERSION" != "$PROMOTE_VERSION" ]; then
+            echo "::error::$PKG's next dist-tag currently points at '${NEXT_VERSION:-nothing}', not '$PROMOTE_VERSION'. Refusing to promote a version that isn't the current next release."
+            exit 1
+          fi
+
+      - name: Confirm the matching git tag exists
+        run: |
+          if ! git rev-parse "v$PROMOTE_VERSION" >/dev/null 2>&1; then
+            echo "::error::git tag v$PROMOTE_VERSION not found -- can't point the stable marketplace entry at a tag that doesn't exist."
+            exit 1
+          fi
+
+      # The actual promotion: moves the npm latest tag to an already-
+      # published version. No new tarball, no new version number -- this
+      # is npm's own supported mechanism for exactly this operation.
+      - name: Move the npm latest tag to the promoted version
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          PKG=$(jq -r .name package.json)
+          npm dist-tag add "$PKG@$PROMOTE_VERSION" latest
+
+      - name: Point the stable-pinned marketplace entry at the promoted tag
+        run: |
+          if [ -f .claude-plugin/marketplace.json ]; then
+            jq --arg ref "v$PROMOTE_VERSION" '
+              .plugins |= (
+                map(select(.name != "parallax-threejs-stable")) +
+                [{
+                  name: "parallax-threejs-stable",
+                  source: {source: "github", repo: "propersloth/parallax-threejs", ref: $ref},
+                  description: "Same plugin as parallax-threejs, pinned to the last deliberately-cut stable release instead of tracking main live — pick this if you want updates only when a stable version is manually released, not on every merge."
+                }]
+              )
+            ' .claude-plugin/marketplace.json > tmp.json && mv tmp.json .claude-plugin/marketplace.json
+          fi
+
+      - name: Commit the marketplace-entry update, if anything changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [ -f .claude-plugin/marketplace.json ] && ! git diff --quiet .claude-plugin/marketplace.json; then
+            git add .claude-plugin/marketplace.json
+            git commit -m "chore(release): promote v$PROMOTE_VERSION to stable [skip ci]"
+            git push
+          else
+            echo "Nothing to commit -- marketplace.json unchanged or absent."
+          fi
+
+      # Un-marks the EXISTING release rather than creating a new one --
+      # there's nothing new to release; the tag, zip asset, and notes
+      # from the original next cut are still exactly right.
+      - name: Un-mark the existing GitHub Release as a pre-release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "v$PROMOTE_VERSION" --prerelease=false --latest

@@ -83,31 +83,44 @@ PR, independent of a manual UAT run.
 Don't hand-edit the `version` field in a PR — it gets overwritten by the
 next automated bump regardless.
 
-### Release channels
+### Release modes
 
-`release.yml`'s workflow dispatch has two independent inputs —
-`bump_type` (how much the number changes) and `channel` (who should see
-it) — not one. Picking `channel: next` instead of `stable`:
+`release.yml`'s workflow dispatch has three modes, plus `bump_type`
+(how much the version number changes — ignored by `promote`, which
+reuses an existing number rather than computing a new one):
 
-- publishes to npm under the `next` dist-tag instead of `latest`, so
-  `npm install @propersloth/parallax-threejs` (no tag) is completely
-  unaffected;
-- marks the GitHub Release `--prerelease`;
-- leaves the `parallax-threejs-stable` marketplace entry's pinned `ref`
-  alone — only a `stable` run moves it.
+- **`next`** — cut a fresh pre-release: bump, build, test, tag, publish
+  to npm under the `next` dist-tag, GitHub Release marked `--prerelease`.
+- **`direct-stable`** — cut a fresh *stable* release with no prior
+  pre-release cycle: same as `next` but publishes under `latest` and the
+  release isn't marked prerelease. For changes small/low-risk enough
+  that a testing cycle isn't warranted.
+- **`promote`** — take an *already-published* `next` release (name it
+  via the `promote_version` input) and relabel it stable, without
+  rebuilding: `npm dist-tag add` moves the `latest` pointer to that exact
+  version (no new tarball, no new version number), the stable-pinned
+  marketplace entry's `ref` moves to the *same* existing git tag (no new
+  tag), and the existing GitHub Release has its prerelease flag cleared
+  (no new release created).
+
+`promote` is the standard release-engineering pattern for this
+situation — build a given commit's bits exactly once, test that exact
+artifact under `next`, and if it's good, relabel it rather than
+rebuilding. `direct-stable`/`next` both produce plain `X.Y.Z` version
+numbers (no `1.0.0-rc.1`-style suffixes) — that's fine specifically
+*because* `promote` never republishes, so the version-number collision
+this would otherwise risk (testing `1.0.0` under `next`, then being
+unable to publish `1.0.0` as `direct-stable` — npm refuses to publish
+the same number twice) doesn't apply to `promote`. It does still apply
+if you skip `promote` and try to `direct-stable` the exact number you
+already tested under `next`; use `promote` for that case instead.
 
 The `parallax-threejs` marketplace entry (`"./"`) always tracks `main`
-live regardless of channel — there's no way to pin a same-repo source to
-a specific ref, so it isn't a "stable" channel in any real sense, just
-the rolling one. `parallax-threejs-stable` (a separate, explicit
-`github`-sourced entry) is what actually stays put between releases.
-
-Don't cut a `next` release at the exact version number you intend to
-later publish as `stable` (e.g. testing `1.0.0` itself under `next` —
-npm refuses to publish the same version number twice, even under a
-different dist-tag, so that version would be permanently unavailable for
-the real stable release). Cut incremental versions for `next` testing,
-then a fresh bump straight to the intended number when cutting `stable`.
+live regardless of mode — there's no way to pin a same-repo source to a
+specific ref, so it isn't a "stable" channel in any real sense, just the
+rolling one. `parallax-threejs-stable` (a separate, explicit
+`github`-sourced entry) is what actually stays put between releases,
+moved only by `direct-stable` or `promote`.
 
 ## Skill content
 
