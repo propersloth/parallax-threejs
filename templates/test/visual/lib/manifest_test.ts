@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert";
+import { assertEquals } from "@std/assert";
 import { lastAccepted } from "./manifest.ts";
 import type { HistoryEntry, Manifest } from "./types.ts";
 

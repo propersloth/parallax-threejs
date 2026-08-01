@@ -3,7 +3,11 @@
 // unit. This does NOT write the human-readable summary (step 5 in
 // checkpoint.md) — that still needs the agent's judgment about what
 // changed and why, since that's genuinely not scriptable.
-import { attachToLiveScene, getSceneSummary, collectConsoleMessages } from "./lib/live-scene.ts";
+import {
+  attachToLiveScene,
+  collectConsoleMessages,
+  getSceneSummary,
+} from "./lib/live-scene.ts";
 
 const label = Deno.args[0] ?? "unlabeled";
 const CONSOLE_WINDOW_MS = 300;
@@ -28,6 +32,8 @@ await Deno.writeTextFile(
 );
 
 console.log(`checkpoint written: ${dir}/${base}.json (+ .png)`);
-console.log(`scene objects: ${scene.length}, console messages: ${messages.length}`);
+console.log(
+  `scene objects: ${scene.length}, console messages: ${messages.length}`,
+);
 
 await browser.close(); // closes the CDP connection, NOT the actual browser tab

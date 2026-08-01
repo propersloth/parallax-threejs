@@ -12,9 +12,16 @@
 // "likely" rather than certain, and the agent's step 4 (live cross-check)
 // remains the authority when this static pass and reality disagree.
 
-export interface Declaration { name: string; type: string; line: number; }
+export interface Declaration {
+  name: string;
+  type: string;
+  line: number;
+}
 
-export function parseGLSLDeclarations(src: string, kind: "uniform" | "attribute" | "varying" | "in" | "out"): Declaration[] {
+export function parseGLSLDeclarations(
+  src: string,
+  kind: "uniform" | "attribute" | "varying" | "in" | "out",
+): Declaration[] {
   const re = new RegExp(`^\\s*${kind}\\s+(\\w+)\\s+(\\w+)\\s*;`, "gm");
   const results: Declaration[] = [];
   let m;
@@ -29,7 +36,8 @@ export function findUniformUsage(glslSrc: string, name: string): boolean {
   // Crude but adequate: does the name appear anywhere else in the file
   // besides its own declaration line? Doesn't distinguish "used in a
   // comment" from "used in code" — a real parser would, this doesn't.
-  const occurrences = (glslSrc.match(new RegExp(`\\b${name}\\b`, "g")) ?? []).length;
+  const occurrences =
+    (glslSrc.match(new RegExp(`\\b${name}\\b`, "g")) ?? []).length;
   return occurrences > 1;
 }
 
@@ -79,15 +87,21 @@ async function main() {
 
   for (const u of glslUniforms) {
     if (!jsUniformKeys.has(u.name)) {
-      findings.push(`BUG-LIKELY: GLSL declares uniform "${u.name}" (${u.type}) at line ${u.line}, no matching key found in JS uniforms object.`);
+      findings.push(
+        `BUG-LIKELY: GLSL declares uniform "${u.name}" (${u.type}) at line ${u.line}, no matching key found in JS uniforms object.`,
+      );
     }
     if (!findUniformUsage(glslSrc, u.name)) {
-      findings.push(`CLEANLINESS: uniform "${u.name}" declared but never referenced elsewhere in the GLSL.`);
+      findings.push(
+        `CLEANLINESS: uniform "${u.name}" declared but never referenced elsewhere in the GLSL.`,
+      );
     }
   }
   for (const key of jsUniformKeys) {
     if (!glslUniforms.some((u) => u.name === key)) {
-      findings.push(`CLEANLINESS: JS uniforms object sets "${key}", no matching GLSL uniform declaration found.`);
+      findings.push(
+        `CLEANLINESS: JS uniforms object sets "${key}", no matching GLSL uniform declaration found.`,
+      );
     }
   }
 
@@ -95,27 +109,43 @@ async function main() {
   // distinct vertex and fragment sources (not just two .glsl files treated
   // as both, which can't distinguish direction of data flow).
   if (vertSrc && fragSrc && vertSrc !== fragSrc) {
-    const outVarying = [...parseGLSLDeclarations(vertSrc, "varying"), ...parseGLSLDeclarations(vertSrc, "out")];
-    const inVarying = [...parseGLSLDeclarations(fragSrc, "varying"), ...parseGLSLDeclarations(fragSrc, "in")];
+    const outVarying = [
+      ...parseGLSLDeclarations(vertSrc, "varying"),
+      ...parseGLSLDeclarations(vertSrc, "out"),
+    ];
+    const inVarying = [
+      ...parseGLSLDeclarations(fragSrc, "varying"),
+      ...parseGLSLDeclarations(fragSrc, "in"),
+    ];
     for (const v of outVarying) {
       const match = inVarying.find((i) => i.name === v.name);
       if (!match) {
-        findings.push(`BUG-LIKELY: vertex shader writes varying "${v.name}" (${v.type}) at line ${v.line}, fragment shader never declares it.`);
+        findings.push(
+          `BUG-LIKELY: vertex shader writes varying "${v.name}" (${v.type}) at line ${v.line}, fragment shader never declares it.`,
+        );
       } else if (match.type !== v.type) {
-        findings.push(`BUG-LIKELY: varying "${v.name}" type mismatch — vertex declares ${v.type}, fragment declares ${match.type}.`);
+        findings.push(
+          `BUG-LIKELY: varying "${v.name}" type mismatch — vertex declares ${v.type}, fragment declares ${match.type}.`,
+        );
       }
     }
     for (const v of inVarying) {
       if (!outVarying.some((o) => o.name === v.name)) {
-        findings.push(`CLEANLINESS: fragment shader declares varying "${v.name}" (${v.type}), vertex shader never writes it — will read undefined/garbage.`);
+        findings.push(
+          `CLEANLINESS: fragment shader declares varying "${v.name}" (${v.type}), vertex shader never writes it — will read undefined/garbage.`,
+        );
       }
     }
   } else if (files.some((f) => /\.glsl$/.test(f))) {
-    findings.push("NOTE: .glsl file(s) provided without a clear vertex/fragment split — varying agreement check skipped, provide separate .vert/.frag files (or .vs/.fs) to enable it.");
+    findings.push(
+      "NOTE: .glsl file(s) provided without a clear vertex/fragment split — varying agreement check skipped, provide separate .vert/.frag files (or .vs/.fs) to enable it.",
+    );
   }
 
   if (findings.length === 0) {
-    console.log("No binding mismatches or unused declarations found by static analysis.");
+    console.log(
+      "No binding mismatches or unused declarations found by static analysis.",
+    );
   } else {
     findings.forEach((f) => console.log(f));
   }

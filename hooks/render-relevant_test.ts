@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert";
+import { assertEquals } from "@std/assert";
 import { isRenderRelevant } from "./render-relevant.mjs";
 
 Deno.test("render-relevant extension + render-relevant dir -> true", () => {

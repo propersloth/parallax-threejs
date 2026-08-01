@@ -1,11 +1,15 @@
-import { assertEquals, assertThrows } from "jsr:@std/assert";
-import { PNG } from "npm:pngjs";
+import { assertEquals, assertThrows } from "@std/assert";
+import { PNG } from "pngjs";
 import { Buffer } from "node:buffer";
 import { diffPngs } from "./diff.ts";
 
 // Builds a tiny solid-color PNG entirely in memory — no fixture files,
 // no disk I/O, matching the "zero new infrastructure" bar for this tier.
-function solidPng(width: number, height: number, [r, g, b, a]: [number, number, number, number]): Uint8Array {
+function solidPng(
+  width: number,
+  height: number,
+  [r, g, b, a]: [number, number, number, number],
+): Uint8Array {
   const png = new PNG({ width, height });
   for (let i = 0; i < width * height; i++) {
     png.data[i * 4] = r;

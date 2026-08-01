@@ -1,4 +1,4 @@
-import { assertEquals, assertMatch } from "jsr:@std/assert";
+import { assertEquals, assertMatch } from "@std/assert";
 import { currentSha, isDirty } from "./git.ts";
 
 // Runs against the actual CI checkout — no mocking, since a git repo is

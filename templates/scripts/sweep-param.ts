@@ -5,13 +5,19 @@
 // job is parsing the natural-language request into these five arguments
 // (and asking if anything's ambiguous) — everything after that is
 // mechanical and shouldn't be re-derived by hand each time.
-import { PNG } from "npm:pngjs";
+import { PNG } from "pngjs";
 import { Buffer } from "node:buffer";
-import { attachToLiveScene, getProperty, setProperty } from "./lib/live-scene.ts";
+import {
+  attachToLiveScene,
+  getProperty,
+  setProperty,
+} from "./lib/live-scene.ts";
 
 const [objectName, path, minStr, maxStr, stepsStr] = Deno.args;
 if (!objectName || !path || !minStr || !maxStr || !stepsStr) {
-  console.error("usage: sweep-param.ts <ObjectName> <property.path> <min> <max> <steps>");
+  console.error(
+    "usage: sweep-param.ts <ObjectName> <property.path> <min> <max> <steps>",
+  );
   Deno.exit(1);
 }
 const min = Number(minStr), max = Number(maxStr), steps = Number(stepsStr);
@@ -42,7 +48,10 @@ const cols = Math.ceil(Math.sqrt(shots.length));
 const rows = Math.ceil(shots.length / cols);
 const { width, height } = shots[0].png;
 const labelHeight = 20;
-const sheet = new PNG({ width: width * cols, height: (height + labelHeight) * rows });
+const sheet = new PNG({
+  width: width * cols,
+  height: (height + labelHeight) * rows,
+});
 sheet.data.fill(255);
 
 for (let i = 0; i < shots.length; i++) {
@@ -51,7 +60,8 @@ for (let i = 0; i < shots.length; i++) {
   const src = shots[i].png;
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      const si = (y * width + x) * 4, di = ((oy + y) * sheet.width + (ox + x)) * 4;
+      const si = (y * width + x) * 4,
+        di = ((oy + y) * sheet.width + (ox + x)) * 4;
       sheet.data[di] = src.data[si];
       sheet.data[di + 1] = src.data[si + 1];
       sheet.data[di + 2] = src.data[si + 2];
@@ -72,8 +82,23 @@ const base = `${timestamp}-${objectName}.${path}`;
 await Deno.writeFile(`${dir}/${base}.png`, PNG.sync.write(sheet));
 await Deno.writeTextFile(
   `${dir}/${base}.json`,
-  JSON.stringify({ objectName, path, min, max, steps, cols, rows, values: shots.map((s) => s.value) }, null, 2),
+  JSON.stringify(
+    {
+      objectName,
+      path,
+      min,
+      max,
+      steps,
+      cols,
+      rows,
+      values: shots.map((s) => s.value),
+    },
+    null,
+    2,
+  ),
 );
 
-console.log(`sweep contact sheet: ${dir}/${base}.png (grid position → value in ${base}.json)`);
+console.log(
+  `sweep contact sheet: ${dir}/${base}.png (grid position → value in ${base}.json)`,
+);
 await browser.close();

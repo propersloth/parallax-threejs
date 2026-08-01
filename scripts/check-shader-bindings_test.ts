@@ -1,5 +1,9 @@
-import { assertEquals } from "jsr:@std/assert";
-import { findUniformUsage, parseGLSLDeclarations, parseJSUniformKeys } from "./check-shader-bindings.ts";
+import { assertEquals } from "@std/assert";
+import {
+  findUniformUsage,
+  parseGLSLDeclarations,
+  parseJSUniformKeys,
+} from "./check-shader-bindings.ts";
 
 Deno.test("parseGLSLDeclarations finds a single uniform with correct name/type/line", () => {
   const src = "precision mediump float;\nuniform float uTime;\nvoid main() {}";
@@ -29,7 +33,8 @@ Deno.test("findUniformUsage: true when the name appears more than once", () => {
 });
 
 Deno.test("findUniformUsage: false when the name only appears in its own declaration", () => {
-  const src = "uniform float uUnused;\nvoid main() { gl_FragColor = vec4(1.0); }";
+  const src =
+    "uniform float uUnused;\nvoid main() { gl_FragColor = vec4(1.0); }";
   assertEquals(findUniformUsage(src, "uUnused"), false);
 });
 
