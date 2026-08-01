@@ -32,7 +32,8 @@ jobs:
       - name: Debug secret length
         env:
           BUMP_PAT: ${{ secrets.BUMP_PAT }}
-        run: echo "BUMP_PAT length: ${#BUMP_PAT}"
+        run: |
+          echo "BUMP_PAT length: ${#BUMP_PAT}"
 
       - uses: actions/checkout@v7
         with:
