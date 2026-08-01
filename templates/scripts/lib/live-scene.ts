@@ -47,9 +47,20 @@ import { chromium, type Page } from "playwright";
 const DEFAULT_BRIDGE_PORT = "9223";
 const DEFAULT_DEV_PORT = "3000";
 
-async function isCdpReachable(port: string): Promise<boolean> {
+// Exported for direct unit testing of the collision guard below — the
+// real-world case this exists for (threejs-devtools-mcp's bridge, or any
+// other non-CDP server, answering 200 on this exact path) can't be
+// exercised through attachToLiveScene() itself without also fighting
+// over the same port for the fallback launch, so it's tested in
+// isolation instead.
+export async function isCdpReachable(port: string): Promise<boolean> {
   try {
-    const res = await fetch(`http://localhost:${port}/json/version`);
+    // Bounded per-request, not just the caller's overall retry budget —
+    // a connection that hangs instead of failing outright would otherwise
+    // make waitForCdpReady's own timeout meaningless.
+    const res = await fetch(`http://localhost:${port}/json/version`, {
+      signal: AbortSignal.timeout(1000),
+    });
     if (!res.ok) return false;
     // Guard against a non-CDP HTTP server answering 200 on this path too
     // (e.g. an SPA dev server's catch-all route, or threejs-devtools-mcp's
@@ -62,7 +73,13 @@ async function isCdpReachable(port: string): Promise<boolean> {
   }
 }
 
-async function waitForCdpReady(port: string, timeoutMs = 15000): Promise<void> {
+// 30s, not 15s — observed real Chromium cold-start variance under load
+// during testing (one run took 6s, well above the typical ~1s), and this
+// plugin's named deployment target (Raspberry Pi) is slower than a dev
+// machine. The crash-detection race above means a genuine early failure
+// still surfaces fast regardless of this ceiling — this only affects how
+// long a slow-but-healthy startup gets before being treated as stuck.
+async function waitForCdpReady(port: string, timeoutMs = 30000): Promise<void> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     if (await isCdpReachable(port)) return;
@@ -98,11 +115,40 @@ async function launchPersistentChromium(
     ],
     stdin: "null",
     stdout: "null",
-    stderr: "null",
+    // Piped, not "null" — read to diagnose an early crash (missing
+    // shared libs, sandbox failure, no display with PARALLAX_HEADLESS
+    // unset, etc.), which is otherwise invisible: the caller just burns
+    // the full waitForCdpReady timeout with no indication anything died.
+    // Verified separately that a piped-then-canceled stderr doesn't harm
+    // this process once it's confirmed healthy and detached (child.unref()
+    // below) — only the "exited" branch actually reads it to completion,
+    // which is safe precisely because the process is already gone by then.
+    stderr: "piped",
   });
   const child = command.spawn();
   child.unref();
-  await waitForCdpReady(port);
+
+  const exited = child.status.then((status) => ({
+    outcome: "exited" as const,
+    status,
+  }));
+  const ready = waitForCdpReady(port).then(() => ({
+    outcome: "ready" as const,
+  }));
+  const result = await Promise.race([ready, exited]);
+
+  if (result.outcome === "exited") {
+    const stderrText = await new Response(child.stderr).text().catch(() => "");
+    throw new Error(
+      `Parallax's Chromium exited immediately (code ${result.status.code}) ` +
+        `instead of opening a CDP port at :${port}.` +
+        (stderrText.trim() ? ` stderr: ${stderrText.trim()}` : ""),
+    );
+  }
+
+  // Still running — stop holding the pipe open rather than leaving it
+  // dangling for a process meant to outlive this script.
+  await child.stderr.cancel().catch(() => {});
 }
 
 export async function attachToLiveScene(): Promise<

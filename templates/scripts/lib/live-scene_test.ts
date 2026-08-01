@@ -14,6 +14,7 @@ import {
   collectConsoleMessages,
   getProperty,
   getSceneSummary,
+  isCdpReachable,
   setProperty,
 } from "./live-scene.ts";
 
@@ -89,6 +90,51 @@ Deno.test("collectConsoleMessages captures messages emitted after attachment", a
   await browser.close();
 });
 
+// isCdpReachable's real job is distinguishing a genuine CDP endpoint from
+// a non-CDP server that happens to answer 200 on the same path — exactly
+// what threejs-devtools-mcp's bridge does (it proxies /json/version
+// straight through to the dev server instead of erroring). Tested
+// directly against plain HTTP servers rather than through
+// attachToLiveScene(), since routing this case through the full function
+// would mean the fake server and the fallback Chromium launch fighting
+// over the same port.
+Deno.test("isCdpReachable rejects a non-CDP server answering 200 on /json/version", async () => {
+  const port = 19230;
+  const server = Deno.serve(
+    { port, onListen: () => {} },
+    () =>
+      new Response("<html>not CDP, e.g. a proxied dev server page</html>", {
+        status: 200,
+      }),
+  );
+  try {
+    assertEquals(await isCdpReachable(String(port)), false);
+  } finally {
+    await server.shutdown();
+  }
+});
+
+Deno.test("isCdpReachable accepts a real CDP version manifest", async () => {
+  const port = 19231;
+  const server = Deno.serve(
+    { port, onListen: () => {} },
+    () =>
+      Response.json({
+        Browser: "fake/1.0",
+        webSocketDebuggerUrl: `ws://localhost:${port}/devtools/browser/fake`,
+      }),
+  );
+  try {
+    assertEquals(await isCdpReachable(String(port)), true);
+  } finally {
+    await server.shutdown();
+  }
+});
+
+Deno.test("isCdpReachable returns false when nothing is listening", async () => {
+  assertEquals(await isCdpReachable("19232"), false);
+});
+
 Deno.test("attachToLiveScene connects to a real running browser and returns its page", async () => {
   const port = 19222; // fixed test port, distinct from the real 9223 default
   const browser = await chromium.launch({
@@ -114,9 +160,8 @@ Deno.test("attachToLiveScene launches its own persistent Chromium when nothing i
   Deno.env.set("DEV_PORT", "1"); // nothing needs to actually be there for this test
   Deno.chdir(tempCwd);
 
-  let attached: Awaited<ReturnType<typeof attachToLiveScene>> | undefined;
   try {
-    attached = await attachToLiveScene();
+    const attached = await attachToLiveScene();
     // It's a real, separate Chromium process launched on demand, not
     // something the test set up itself — confirms the auto-launch path,
     // not just a lucky connection to a pre-existing browser.
@@ -131,11 +176,20 @@ Deno.test("attachToLiveScene launches its own persistent Chromium when nothing i
     // Production code deliberately never exposes a way to kill the
     // persistent browser it launches (callers must never do that to a
     // shared window) — so the test reaches for the CDP protocol directly
-    // to clean up the process it caused to exist, rather than leaking a
-    // stray Chromium after `deno test` exits.
-    if (attached) {
-      const session = await attached.browser.newBrowserCDPSession();
+    // to clean up whatever it caused to exist at this port, rather than
+    // leaking a stray Chromium after `deno test` exits. Reconnects fresh
+    // here (not reusing a browser handle from the try block above)
+    // specifically so this still cleans up correctly if attachToLiveScene()
+    // itself threw partway through — e.g. after successfully launching
+    // Chrome but before the function returned — not just on the happy path.
+    try {
+      const cleanupBrowser = await chromium.connectOverCDP(
+        `http://localhost:${port}`,
+      );
+      const session = await cleanupBrowser.newBrowserCDPSession();
       await session.send("Browser.close").catch(() => {});
+    } catch {
+      // Nothing was listening at the port — nothing to clean up.
     }
     Deno.chdir(originalCwd);
     await Deno.remove(tempCwd, { recursive: true }).catch(() => {});
