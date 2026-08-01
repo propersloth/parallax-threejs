@@ -11,6 +11,20 @@ permissions:
   contents: read
 
 jobs:
+  actionlint:
+    runs-on: ubuntu-latest
+    # Added after actionlint caught a real bug here that generic YAML
+    # parsing (scripts/validate-config-syntax.ts) didn't and couldn't:
+    # valid YAML isn't the same as a valid GitHub Actions workflow —
+    # hashFiles() is only usable in certain step-level contexts, not at
+    # job level, and that's a schema rule no generic parser would know
+    # to check. GitHub itself only reports this by failing the run with
+    # "workflow file issue" after the fact, on an actual push — this
+    # catches it on the PR instead, without needing to push first to find out.
+    steps:
+      - uses: actions/checkout@v7
+      - uses: raven-actions/actionlint@v2
+
   test:
     runs-on: ubuntu-latest
     # Lane 1 — fast, blocks every PR. Pure-logic tests plus git.ts (fast
@@ -107,8 +121,10 @@ jobs:
     # separate, less strictly-enforced mechanism — checked here on every
     # PR, not just trusted once at review time, precisely because it's the
     # kind of thing a later unrelated change (a stray .npmignore, an edit
-    # to "files") could silently break.
-    if: hashFiles('package.json') != ''
+    # to "files") could silently break. No conditional guard on
+    # package.json's existence — same as dist-purity below not guarding
+    # on scripts/build-mcp-dist.sh: this repo has package.json
+    # unconditionally as of this same change, so the job just always runs.
     steps:
       - uses: actions/checkout@v7
       - name: Populate vendor/spector as if setup-spector.sh had been run
