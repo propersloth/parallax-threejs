@@ -56,13 +56,15 @@ results before cutting the tag — see the UAT runbook.
 
 ### Known limitations at time of writing
 - Real-hardware UAT (2026-07-31, Raspberry Pi 5, against `ceres`, a real
-  npm-based three.js prototype) found 13 findings, 4 fixed live during
-  the run; 5 more (#8, #12, #13, #9, #11) fixed post-run, 4 still open —
-  see UAT-RUNBOOK.md's Sign-off section and
+  npm-based three.js prototype) found 13 findings — all now resolved.
+  4 fixed live during the run, 8 more fixed post-run (#8, #9, #10, #11,
+  #12, #13, plus docs fixes #2/#3/#5/#6), and 1 (#7,
+  `typescript-language-server` failing to initialize against real
+  projects) conclusively triaged as a Claude Code core LSP-rooting
+  behavior outside this plugin's control, documented in README.md's
+  Troubleshooting rather than coded around. See
   `aidlc-docs/construction/build-and-test/uat-release-blockers.md` for
-  full detail. Remaining open findings are lower-severity (upstream LSP
-  integration issue, one undocumented convention, and documentation
-  gaps) — no known code-level release blockers remain.
+  full detail. No known release blockers remain.
 
 ## Prior to [Unreleased]
 
