@@ -3,3 +3,6 @@ vendor/*
 .parallax/
 node_modules/
 *.log
+.aidlc-rule-details/
+.playwright-mcp/
+aidlc-docs/

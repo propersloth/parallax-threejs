@@ -302,17 +302,53 @@ stopping to fix it mid-run, unless it blocks a later phase.
 
 ## Sign-off
 
+Run 2026-07-31, Raspberry Pi 5, against a real prototype (`ceres`, an
+npm/esbuild-based vanilla three.js project — chosen deliberately since
+it's the common case, not a Deno-based or greenfield project built for
+this plugin). Findings below are numbered and referenced from the table;
+severity reflects real-world blast radius, not just whether the checkbox
+passed.
+
 | Phase | Result | Notes |
 |---|---|---|
-| 0 — Environment | ☐ Pass ☐ Fail | |
-| 1 — Install | ☐ Pass ☐ Fail | |
-| 2 — Wire into real project | ☐ Pass ☐ Fail | |
-| 3 — Browser opens | ☐ Pass ☐ Fail | |
-| 4 — MCP smoke tests | ☐ Pass ☐ Fail | |
-| 5 — LSP | ☐ Pass ☐ Fail | |
-| 6 — Commands | ☐ Pass ☐ Fail | |
-| 7 — Agents | ☐ Pass ☐ Fail | |
-| 8 — Hook | ☐ Pass ☐ Fail | |
-| 9 — Regression suite | ☐ Pass ☐ Fail | |
+| 0 — Environment | ☑ Pass (after fixes) | Chrome and cargo/`shader-language-server` were missing entirely; installed manually — `setup-pi.sh` itself was never run beforehand, so this is expected first-run friction, not a script bug. |
+| 1 — Install | ☑ Pass (after fixes) | See #1, #2, #3. |
+| 2 — Wire into real project | ☑ Pass (after fix) | See #4. |
+| 3 — Browser opens | ☑ Pass | Real visible Chrome window on the Pi's display, confirmed via screenshot + console + DOM query. |
+| 4 — MCP smoke tests | ☑ Pass | All four servers (chrome-devtools-mcp, threejs-devtools-mcp, playwright-mcp, spector) work. Minor: threejs-devtools-mcp's bridge has a connection race on first page load ("scene not found yet") that resolves on one clean reload — not blocking. |
+| 5 — LSP | ☒ Fail | See #5, #6, #7. |
+| 6 — Commands | ☒ Fail | See #8, #9, #10. `/sync-view` untested end-to-end due to #10. |
+| 7 — Agents | ☑ Pass (with findings) | `visual-debugger` passed cleanly — correlated 4 evidence channels, correct diagnosis, first real validation of the plugin's core value prop. `shader-reviewer` ran successfully against a real project for the first time but see #11 for script accuracy issues. `scenario-author` not independently run — it calls `deno task replay` internally, which would hit #9. |
+| 8 — Hook | ☒ Fail | See #12. |
+| 9 — Regression suite | ☒ Fail | See #13, blocks before even reaching #9's CDP issue. |
 
-**Overall**: ☐ Ship ☐ Fix findings first
+**Overall**: ☐ Ship ☑ Fix findings first
+
+### Findings
+
+**Fixed live during this run** (environment/setup gaps, not plugin code):
+1. No `.claude-plugin/marketplace.json` existed anywhere in the repo — the README's own `/plugin marketplace add propersloth/parallax-threejs` instruction cannot work without one. Added `.claude-plugin/marketplace.json` (marketplace name `propersloth`, single plugin entry with `"source": "./"`).
+2. `UAT-RUNBOOK.md` Phase 1 says to install a plugin named `python-lsp` from `claude-plugins-official` — no such plugin exists there. The actual name is `pyright-lsp`. Doc bug, not yet corrected in the runbook text itself.
+3. Editing the plugin's own `.mcp.json` after `claude plugin install` doesn't take effect via `claude plugin update` — local-path-sourced plugins are cached per-version, and `update` treats "same version" as "already latest" even though the underlying files changed. Needed a full uninstall+reinstall to pick up the edit. Worth a note in CONTRIBUTING.md for anyone iterating on the plugin locally.
+4. `ceres` (the real prototype) didn't expose `window.scene` anywhere — confirmed via runtime inspection (`typeof window.scene === 'undefined'`, no `THREE`-like global, nothing reachable). Added the one-line `window.scene = scene;` to `ceres/src/scene.js` per README's documented prerequisite (this is a fix to the test subject, not the plugin, but confirms the prerequisite is real and easy to miss silently).
+
+**Still open — need real fixes in the plugin:**
+
+5. **GLSL LSP** — `shader-language-server` built fine via `cargo install`, but this session's process PATH never included `~/.cargo/bin` even after a full restart, because whatever launches `claude` here execs it directly rather than through a login/interactive shell, so `.bashrc`/`.profile` never source `$HOME/.cargo/env`. Environment-specific, not a plugin bug, but the Troubleshooting section could mention "verify PATH in the actual Claude Code process, not just your shell" more explicitly.
+6. **TS/JS LSP, part 1** — the official `typescript-lsp` plugin ships no binary; its own README requires a separate `npm install -g typescript-language-server typescript`. Not mentioned in Parallax's own docs/prerequisites.
+7. **TS/JS LSP, part 2** — even with both installed globally, `typescript-language-server` fails to initialize with *"Could not find a valid TypeScript installation"* against real projects that do have `typescript` as a local dependency (reproduced against an unrelated project, `hermes-workspace`, where `require.resolve('typescript')` succeeds directly but the LSP still fails). Looks like a Claude Code ↔ `typescript-language-server` integration bug outside this plugin's control, but it blocks Phase 5 regardless.
+8. **`deno-tasks.json` missing `--allow-sys`** — every interactive script that imports `npm:playwright` (`checkpoint.ts`, `sweep-param.ts`, `replay.ts`, `diff-checkpoints.ts`) fails immediately with `NotCapable: Requires sys access to "homedir"` before doing anything else, because Playwright's own init calls `os.homedir()`. Simple, high-value fix: add `--allow-sys` to those task definitions.
+9. **`/checkpoint`, `/sweep`, `/replay`, `/diff-checkpoints` cannot attach to the browser at all** — `live-scene.ts` assumes `Playwright.chromium.connectOverCDP('http://localhost:<BRIDGE_PORT>')` can reach "the same browser tab the human and Claude are already looking at" via threejs-devtools-mcp's bridge proxy. Confirmed wrong two independent ways: (a) that proxy doesn't speak CDP — `curl http://localhost:<port>/json/version` returns the injected bridge-script HTML, not a CDP version manifest; (b) `chrome-devtools-mcp` launches Chrome with `--remote-debugging-pipe` (confirmed via the live process's actual command line), meaning there is no CDP TCP port open at all for Playwright to connect to, regardless of which port is guessed. This is an architectural mismatch, not a config typo — needs either Parallax launching its own CDP-port'd Chrome instance, or `live-scene.ts` reusing chrome-devtools-mcp's actual connection some other way.
+10. **`/sync-view`** (routes through threejs-devtools-mcp only, so unaffected by #9) still fails — `camera_details`/`set_camera` report "No camera found in scene" because threejs-devtools-mcp's bridge only discovers the camera via scene-graph traversal or an undocumented `window.__THREE_CAMERA__` global. `ceres`'s camera is a completely ordinary, valid three.js pattern (`new THREE.PerspectiveCamera(...)`, never added as a scene child) — README documents only the `window.scene` convention, not `window.__THREE_CAMERA__`.
+11. **`check-shader-bindings.ts` false-positive rate: 28/28 on first real-world run.** Against `ceres`'s actual shaders, every flagged "BUG-LIKELY" uniform was manually verified to be correctly bound — the script's `parseJSUniformKeys()` only recognizes literal `uniforms: { ... }` object literals, not the equally common `onBeforeCompile` + `shader.uniforms.uX = ...` idiom `ceres` (and presumably many real projects) actually uses. Separately, `parseGLSLDeclarations`'s line-anchored regex silently drops the second declaration when two appear on one semicolon-separated line (`uPolarNormalN`/`uPolarNormalS` were never checked in either direction, no error). Real, reproducible parser gaps — first time this script has run against a non-template-fixture project.
+12. **Hook writes to the wrong project.** `hooks/post-edit.js` writes `.parallax/pending-checkpoint` under `${CLAUDE_PLUGIN_ROOT}` — the plugin's own installed/dev directory — not the project actually being edited. Confirmed live: editing `ceres/src/shaders/body.glsl` wrote the marker to `/home/sloth/Work/parallax-threejs/.parallax/pending-checkpoint`. In a normal (non-local-dev) install, `CLAUDE_PLUGIN_ROOT` points at a shared, version-pinned plugin cache path — every project using the plugin would collide on the same marker file, and it would silently relocate (losing any pending marker) on every plugin version bump. Needs the project root (`process.cwd()` or an equivalent project-scoped env var), not the plugin root.
+13. **Visual regression suite is broken for any npm-based target project.** `test/visual/lib/diff.ts` imports `npm:pixelmatch` and `npm:pngjs`. In `ceres` (an ordinary npm/esbuild project with its own `node_modules/`), Deno auto-detects that local `node_modules/` and routes npm-specifier resolution through it instead of Deno's own npm cache — and neither package is installed there, so `deno task visual:run` fails before doing anything else (`Could not find a matching package for 'npm:pixelmatch' in the node_modules directory`). `parallax-threejs` itself has no `node_modules/` at all, which is why its own test suite never surfaces this. `/init`'s `deno.json` scaffolding doesn't declare these as imports or set `"nodeModulesDir"`, so this will reproduce in essentially any real-world npm-based three.js project — arguably higher-impact than #9 since it blocks even before the CDP problem.
+
+### Recommendation
+
+Not ready to ship 1.0.0. Findings #8, #9, #12, and #13 are the priority
+fixes — between them they block every interactive command and the
+entire visual regression suite for a normal npm-based target project,
+which is the common case this plugin needs to work for. #11 undermines
+trust in `shader-reviewer`'s primary tool. #5–#7 and #1–#3 are real but
+lower-severity (environment/doc gaps rather than broken core features).

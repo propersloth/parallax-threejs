@@ -1,0 +1,14 @@
+{
+  "name": "propersloth",
+  "owner": {
+    "name": "Sean Corbett O'Donnell",
+    "email": "sean.c.odonnell@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "parallax-threejs",
+      "source": "./",
+      "description": "Three.js/GLSL debugging for Claude Code — correlates scene graph, console, GL state, and pixels into one diagnosis. Plus SHA-indexed visual regression testing."
+    }
+  ]
+}
