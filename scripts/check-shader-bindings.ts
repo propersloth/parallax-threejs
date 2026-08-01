@@ -18,15 +18,39 @@ export interface Declaration {
   line: number;
 }
 
+// Strips /* block */ and // line comments before parsing, so a
+// commented-out declaration or reference doesn't get treated as real —
+// without this, removing the line-start anchor below (to fix the
+// same-line-multiple-declarations bug) would make commented-out code
+// match too, which the old anchored version accidentally avoided. Block
+// comments are replaced with just their newlines (not removed outright)
+// so line numbers stay accurate. Doesn't understand string literals, so
+// a `//` inside a string would be (harmlessly, for this tool's purposes)
+// treated as a comment start — an accepted limitation of a first-pass
+// regex parser, not a real tokenizer, consistent with the rest of this
+// file's approach.
+function stripComments(src: string): string {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, (block) => block.replace(/[^\n]/g, ""))
+    .replace(/\/\/.*$/gm, "");
+}
+
 export function parseGLSLDeclarations(
   src: string,
   kind: "uniform" | "attribute" | "varying" | "in" | "out",
 ): Declaration[] {
-  const re = new RegExp(`^\\s*${kind}\\s+(\\w+)\\s+(\\w+)\\s*;`, "gm");
+  // No longer anchored to the start of a line (`^\s*`) — that silently
+  // dropped a second declaration sharing a line with a first, semicolon
+  // and all (e.g. `uniform sampler2D uPolarColorN; uniform sampler2D
+  // uPolarNormalN;`, a real pattern from ceres's body.glsl). `\b` still
+  // requires `kind` to be a whole word, not a substring of a longer
+  // identifier.
+  const cleaned = stripComments(src);
+  const re = new RegExp(`\\b${kind}\\s+(\\w+)\\s+(\\w+)\\s*;`, "g");
   const results: Declaration[] = [];
   let m;
-  while ((m = re.exec(src))) {
-    const line = src.slice(0, m.index).split("\n").length;
+  while ((m = re.exec(cleaned))) {
+    const line = cleaned.slice(0, m.index).split("\n").length;
     results.push({ type: m[1], name: m[2], line });
   }
   return results;
@@ -35,24 +59,96 @@ export function parseGLSLDeclarations(
 export function findUniformUsage(glslSrc: string, name: string): boolean {
   // Crude but adequate: does the name appear anywhere else in the file
   // besides its own declaration line? Doesn't distinguish "used in a
-  // comment" from "used in code" — a real parser would, this doesn't.
+  // string" from "used in code" — a real parser would, this doesn't.
+  const cleaned = stripComments(glslSrc);
   const occurrences =
-    (glslSrc.match(new RegExp(`\\b${name}\\b`, "g")) ?? []).length;
+    (cleaned.match(new RegExp(`\\b${name}\\b`, "g")) ?? []).length;
   return occurrences > 1;
 }
 
 export function parseJSUniformKeys(jsSrc: string): string[] {
-  // Looks for a `uniforms: { ... }` object literal and extracts its
-  // top-level keys. Only handles literal key names, not computed
-  // properties or spread — flagged in the header comment above.
-  const match = jsSrc.match(/uniforms\s*:\s*\{([\s\S]*?)\n\s*\}/);
-  if (!match) return [];
-  const body = match[1];
-  const keyRe = /^\s*(\w+)\s*:/gm;
+  const cleaned = stripComments(jsSrc);
   const keys: string[] = [];
+  const seen = new Set<string>();
+  const add = (name: string) => {
+    if (!seen.has(name)) {
+      seen.add(name);
+      keys.push(name);
+    }
+  };
+
+  // Pattern 1: a literal `uniforms: { ... }` object literal — the common
+  // ShaderMaterial constructor argument. Only handles literal key names,
+  // not computed properties or spread — flagged in the header comment
+  // above.
+  const literalMatch = cleaned.match(/uniforms\s*:\s*\{([\s\S]*?)\n\s*\}/);
+  if (literalMatch) {
+    const keyRe = /^\s*(\w+)\s*:/gm;
+    let m;
+    while ((m = keyRe.exec(literalMatch[1]))) add(m[1]);
+  }
+
+  // Pattern 2: the `onBeforeCompile(shader) { shader.uniforms.uX = ...; }`
+  // idiom — equally common in real projects (e.g. ceres's own scene.js)
+  // but invisible to the literal-object check above, since it's a
+  // runtime assignment onto an existing object, not an object literal.
+  const assignRe = /\.uniforms\.(\w+)\s*=/g;
   let m;
-  while ((m = keyRe.exec(body))) keys.push(m[1]);
+  while ((m = assignRe.exec(cleaned))) add(m[1]);
+
   return keys;
+}
+
+// three.js auto-injects these into every shader program's prefix — never
+// bound from a JS uniforms object, so flagging them as "no matching key"
+// is a false positive regardless of the two parser gaps fixed above.
+// Sourced directly from three.js's own WebGLProgram.js (the vertex- and
+// fragment-shader prefix construction, both stages combined), not
+// guessed — a real, empirical false-positive class discovered by running
+// this tool against ceres's actual shaders even after those two fixes.
+const THREE_BUILTIN_UNIFORMS = new Set([
+  "modelMatrix",
+  "modelViewMatrix",
+  "projectionMatrix",
+  "viewMatrix",
+  "normalMatrix",
+  "cameraPosition",
+  "isOrthographic",
+]);
+
+// Extracted from main() so the binding-agreement logic (including the
+// three.js-builtin allowlist above) is directly unit-testable without
+// spawning the CLI against real files.
+export function checkUniformBindings(
+  glslSrc: string,
+  jsSrc: string,
+): string[] {
+  const findings: string[] = [];
+
+  const glslUniforms = parseGLSLDeclarations(glslSrc, "uniform");
+  const jsUniformKeys = new Set(parseJSUniformKeys(jsSrc));
+
+  for (const u of glslUniforms) {
+    if (!jsUniformKeys.has(u.name) && !THREE_BUILTIN_UNIFORMS.has(u.name)) {
+      findings.push(
+        `BUG-LIKELY: GLSL declares uniform "${u.name}" (${u.type}) at line ${u.line}, no matching key found in JS uniforms object.`,
+      );
+    }
+    if (!findUniformUsage(glslSrc, u.name)) {
+      findings.push(
+        `CLEANLINESS: uniform "${u.name}" declared but never referenced elsewhere in the GLSL.`,
+      );
+    }
+  }
+  for (const key of jsUniformKeys) {
+    if (!glslUniforms.some((u) => u.name === key)) {
+      findings.push(
+        `CLEANLINESS: JS uniforms object sets "${key}", no matching GLSL uniform declaration found.`,
+      );
+    }
+  }
+
+  return findings;
 }
 
 async function main() {
@@ -80,30 +176,7 @@ async function main() {
   }
   const glslSrc = vertSrc + fragSrc;
 
-  const findings: string[] = [];
-
-  const glslUniforms = parseGLSLDeclarations(glslSrc, "uniform");
-  const jsUniformKeys = new Set(parseJSUniformKeys(jsSrc));
-
-  for (const u of glslUniforms) {
-    if (!jsUniformKeys.has(u.name)) {
-      findings.push(
-        `BUG-LIKELY: GLSL declares uniform "${u.name}" (${u.type}) at line ${u.line}, no matching key found in JS uniforms object.`,
-      );
-    }
-    if (!findUniformUsage(glslSrc, u.name)) {
-      findings.push(
-        `CLEANLINESS: uniform "${u.name}" declared but never referenced elsewhere in the GLSL.`,
-      );
-    }
-  }
-  for (const key of jsUniformKeys) {
-    if (!glslUniforms.some((u) => u.name === key)) {
-      findings.push(
-        `CLEANLINESS: JS uniforms object sets "${key}", no matching GLSL uniform declaration found.`,
-      );
-    }
-  }
+  const findings: string[] = checkUniformBindings(glslSrc, jsSrc);
 
   // Vertex/fragment varying agreement — only meaningful if we actually got
   // distinct vertex and fragment sources (not just two .glsl files treated

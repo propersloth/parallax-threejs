@@ -57,15 +57,12 @@ results before cutting the tag — see the UAT runbook.
 ### Known limitations at time of writing
 - Real-hardware UAT (2026-07-31, Raspberry Pi 5, against `ceres`, a real
   npm-based three.js prototype) found 13 findings, 4 fixed live during
-  the run; 4 more (#8, #12, #13, #9) fixed post-run, 5 still open — see
-  UAT-RUNBOOK.md's Sign-off section and
+  the run; 5 more (#8, #12, #13, #9, #11) fixed post-run, 4 still open —
+  see UAT-RUNBOOK.md's Sign-off section and
   `aidlc-docs/construction/build-and-test/uat-release-blockers.md` for
-  full detail. Highest-severity open finding, needing a real code fix
-  before 1.0.0:
-  - `check-shader-bindings.ts` produced a 28/28 false-positive rate on
-    its first real-world run — it doesn't recognize the
-    `onBeforeCompile` + `shader.uniforms.X = ...` binding idiom, only
-    literal `uniforms: {...}` object literals.
+  full detail. Remaining open findings are lower-severity (upstream LSP
+  integration issue, one undocumented convention, and documentation
+  gaps) — no known code-level release blockers remain.
 
 ## Prior to [Unreleased]
 
