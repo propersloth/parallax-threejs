@@ -41,6 +41,18 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
+      - name: Cache Deno dependencies
+        # denoland/setup-deno has no built-in cache flag (unlike
+        # actions/setup-node's cache: param) — deno.json pulls real npm
+        # packages (@dimforge/rapier3d, playwright, etc.), so without this
+        # every job here re-downloads them from scratch. Keyed on deno.lock
+        # so a dependency change naturally invalidates it.
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/deno
+          key: ${{ runner.os }}-deno-${{ hashFiles('deno.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-deno-
       - name: Run unit tests
         # templates/ must be listed first: with it after scripts/ or hooks/,
         # deno test's --ignore glob silently fails to match the two excluded
@@ -55,6 +67,18 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
+      - name: Cache Deno dependencies
+        # denoland/setup-deno has no built-in cache flag (unlike
+        # actions/setup-node's cache: param) — deno.json pulls real npm
+        # packages (@dimforge/rapier3d, playwright, etc.), so without this
+        # every job here re-downloads them from scratch. Keyed on deno.lock
+        # so a dependency change naturally invalidates it.
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/deno
+          key: ${{ runner.os }}-deno-${{ hashFiles('deno.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-deno-
       - name: Type-check scripts
         run: deno check scripts/*.ts
       - name: Format check
@@ -74,6 +98,18 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
+      - name: Cache Deno dependencies
+        # denoland/setup-deno has no built-in cache flag (unlike
+        # actions/setup-node's cache: param) — deno.json pulls real npm
+        # packages (@dimforge/rapier3d, playwright, etc.), so without this
+        # every job here re-downloads them from scratch. Keyed on deno.lock
+        # so a dependency change naturally invalidates it.
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/deno
+          key: ${{ runner.os }}-deno-${{ hashFiles('deno.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-deno-
       - name: Validate all JSON/YAML config actually parses
         # Replaces what was previously a manual check run by hand before
         # every package/release — this closes that gap for good instead
