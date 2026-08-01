@@ -9,7 +9,8 @@
     {
       "name": "parallax-threejs",
       "source": "./",
-      "description": "Three.js/GLSL debugging for Claude Code — correlates scene graph, console, GL state, and pixels into one diagnosis. Plus SHA-indexed visual regression testing."
+      "description": "Three.js/GLSL debugging for Claude Code — correlates scene graph, console, GL state, and pixels into one diagnosis. Plus SHA-indexed visual regression testing.",
+      "version": "0.3.27"
     },
     {
       "name": "parallax-threejs-npm",
