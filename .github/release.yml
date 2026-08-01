@@ -1,0 +1,32 @@
+# Categorizes `gh release create --generate-notes` output by PR label,
+# instead of one flat "What's Changed" list. Only pays off once PRs
+# actually carry these labels — nothing enforces that today, so until a
+# labeling habit exists, most PRs will fall through to the catch-all
+# category rather than being usefully grouped. Dependabot PRs (the
+# github-actions ecosystem, per dependabot.yml) get the "dependencies"
+# label automatically.
+changelog:
+  categories:
+    - title: 🚀 Features
+      labels:
+        - enhancement
+        - feature
+    - title: 🐛 Bug Fixes
+      labels:
+        - bug
+        - fix
+    - title: 📚 Documentation
+      labels:
+        - documentation
+        - docs
+    - title: 📦 Dependencies
+      labels:
+        - dependencies
+    - title: 🧹 Chores & Internal
+      labels:
+        - chore
+        - internal
+        - ci
+    - title: Other Changes
+      labels:
+        - "*"

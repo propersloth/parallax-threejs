@@ -79,6 +79,17 @@ jobs:
   release:
     if: github.event.inputs.mode != 'promote'
     runs-on: ubuntu-latest
+    # id-token: write is npm provenance's own requirement (OIDC-based --
+    # npm publish --provenance uses this to attest the package was built
+    # by this exact workflow run, not to authenticate to npm itself, which
+    # still goes through NODE_AUTH_TOKEN separately). Job-level, not
+    # workflow-level, since promote never publishes and doesn't need it --
+    # least privilege. Overriding permissions at job level replaces rather
+    # than extends the workflow-level block, so contents: write has to be
+    # repeated here too.
+    permissions:
+      contents: write
+      id-token: write
     steps:
       # token: BUMP_PAT, not the default GITHUB_TOKEN — see bump-patch.yml's
       # comments for why: main requires PRs via branch protection, and
@@ -87,18 +98,18 @@ jobs:
       # request" on this job's own "Commit version bump" push). BUMP_PAT
       # must belong to an account with Admin on this repo, same requirement
       # as bump-patch.yml.
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
           token: ${{ secrets.BUMP_PAT }}
 
-      - uses: denoland/setup-deno@v2
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2
         with:
           deno-version: v2.x
       - name: Cache Deno dependencies
         # See ci.yml's identical step — deno.json pulls real npm packages,
         # and denoland/setup-deno has no built-in cache flag.
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ~/.cache/deno
           key: ${{ runner.os }}-deno-${{ hashFiles('deno.lock') }}
@@ -108,7 +119,7 @@ jobs:
       # registry-url here is what makes `npm publish` later pick up
       # NODE_AUTH_TOKEN automatically (it writes a scoped .npmrc) — this
       # isn't just "have Node available," ubuntu-latest already has that.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           registry-url: "https://registry.npmjs.org"
@@ -148,7 +159,7 @@ jobs:
         run: deno test --allow-run=git --allow-read --allow-write --ignore=templates/test/visual/lib/capture_test.ts,templates/scripts/lib/live-scene_test.ts templates/ scripts/ hooks/
       - name: Cache Playwright browsers
         id: playwright-cache
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('deno.lock') }}
@@ -260,12 +271,12 @@ jobs:
           git tag "v${{ steps.version.outputs.new_version }}"
           git push origin "v${{ steps.version.outputs.new_version }}"
 
-      - name: Build dist zip
-        run: |
-          mkdir -p dist
-          zip -r "dist/parallax-threejs-v${{ steps.version.outputs.new_version }}.zip" . \
-            -x '.git/*' -x '.github/*' -x 'dist/*' -x '*.DS_Store'
-
+      # No custom dist zip attached -- neither real install path (the
+      # git-based marketplace entry, which clones the repo directly; the
+      # npm-based one, which pulls from the registry) ever reads a GitHub
+      # Release asset. GitHub still auto-attaches its own "Source code
+      # (zip)"/"(tar.gz)" links to every release regardless, so removing
+      # the redundant custom-built one doesn't remove a download option.
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -275,7 +286,6 @@ jobs:
             PRERELEASE_FLAG="--prerelease"
           fi
           gh release create "v${{ steps.version.outputs.new_version }}" \
-            "dist/parallax-threejs-v${{ steps.version.outputs.new_version }}.zip" \
             --title "v${{ steps.version.outputs.new_version }}" \
             --generate-notes \
             $PRERELEASE_FLAG
@@ -286,6 +296,13 @@ jobs:
       # cleanly before this point if it's missing. --access public is
       # required for a scoped package's first publish (npm defaults scoped
       # packages to private, which would otherwise need a paid plan).
+      #
+      # --provenance attests (via OIDC, hence the job's id-token: write
+      # permission above) that this exact tarball was built by this exact
+      # workflow run from this exact commit — the npm registry then shows
+      # a verified "Provenance" badge on the package page. Requires
+      # publishing from a supported CI provider (GitHub Actions qualifies)
+      # with npm CLI >= 9.5; Node 22 here bundles a recent-enough npm.
       #
       # --tag is the actual channel enforcement point for npm: publish
       # defaults to tagging as `latest` (i.e. what everyone gets on a
@@ -305,7 +322,7 @@ jobs:
           if [ "${{ github.event.inputs.mode }}" == "direct-stable" ]; then
             NPM_TAG="latest"
           fi
-          npm publish --access public --tag "$NPM_TAG"
+          npm publish --access public --provenance --tag "$NPM_TAG"
 
   promote:
     if: github.event.inputs.mode == 'promote'
@@ -322,12 +339,12 @@ jobs:
       # job's "Commit the marketplace-entry update" step pushes to main
       # directly, which the default GITHUB_TOKEN can't do under branch
       # protection (GH006).
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
           token: ${{ secrets.BUMP_PAT }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           registry-url: "https://registry.npmjs.org"
@@ -414,8 +431,8 @@ jobs:
           fi
 
       # Un-marks the EXISTING release rather than creating a new one --
-      # there's nothing new to release; the tag, zip asset, and notes
-      # from the original next cut are still exactly right.
+      # there's nothing new to release; the tag and notes from the
+      # original next cut are still exactly right.
       - name: Un-mark the existing GitHub Release as a pre-release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
