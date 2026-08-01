@@ -70,7 +70,7 @@ stopping to fix it mid-run, unless it blocks a later phase.
 
   ```
   /plugin install typescript-lsp@claude-plugins-official
-  /plugin install python-lsp@claude-plugins-official
+  /plugin install pyright-lsp@claude-plugins-official
   ```
 
 - [ ] Install Parallax itself, then restart:

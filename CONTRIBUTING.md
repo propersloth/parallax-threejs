@@ -35,6 +35,15 @@ Also worth a manual `claude --plugin-dir .` session to sanity-check
 anything you changed actually behaves as expected — CI's type/schema
 checks catch structural problems, not behavioral ones.
 
+If you're instead testing via `claude plugin install`/`claude plugin
+update` against a local path (rather than `--plugin-dir .`), know that
+`update` won't pick up your edits: local-path-sourced plugins are cached
+per-version, and `update` treats an unchanged version number as already
+up to date regardless of what actually changed on disk. A full
+uninstall + reinstall is the only way to force a refresh (UAT finding
+#3). `--plugin-dir .` doesn't have this problem — prefer it for
+iterative local testing.
+
 ## Testing model — two lanes, on purpose
 
 - **Lane 1** (`ci.yml`'s `test` job, runs on every PR): fast, pure-logic

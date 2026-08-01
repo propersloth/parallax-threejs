@@ -148,7 +148,13 @@ already cover what those would duplicate.
 
 - **GLSL/LSP diagnostics not appearing** — check `/plugin` → Errors for a
   missing-binary message before assuming `.lsp.json` is misconfigured;
-  `shader_language_server` has to be on PATH separately.
+  `shader_language_server` has to be on PATH separately. If you installed
+  it via `cargo install` and it's still not found, verify PATH in the
+  actual Claude Code process, not just your own shell — if whatever
+  launches `claude` execs it directly rather than through a login/
+  interactive shell, `~/.cargo/bin` never gets onto PATH even after a
+  full restart, since `.bashrc`/`.profile` (where `cargo install` usually
+  adds it) never gets sourced (UAT finding #5).
 - **TS/JS LSP not installed** — the official `typescript-lsp` plugin
   ships no binary; install it separately: `npm install -g
   typescript-language-server typescript`.
