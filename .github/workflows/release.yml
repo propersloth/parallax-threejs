@@ -32,6 +32,14 @@ jobs:
         with:
           deno-version: v2.x
 
+      # registry-url here is what makes `npm publish` later pick up
+      # NODE_AUTH_TOKEN automatically (it writes a scoped .npmrc) — this
+      # isn't just "have Node available," ubuntu-latest already has that.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: "https://registry.npmjs.org"
+
       # Same checks as ci.yml, re-run here as a gate — a release can never
       # ship something that hasn't been re-verified at release time, even
       # though the merge that led here already passed CI once.
@@ -78,12 +86,24 @@ jobs:
               .claude-plugin/marketplace.json > tmp.json && mv tmp.json .claude-plugin/marketplace.json
           fi
 
+      # package.json's own version is what `npm publish` actually reads —
+      # keeping it in lockstep with plugin.json avoids the two ever
+      # disagreeing about what "this version" means for the exact same
+      # release. Only runs if package.json exists, same "if this repo
+      # opts into it" pattern as the marketplace.json step above.
+      - name: Update package.json, if this repo publishes to npm
+        run: |
+          if [ -f package.json ]; then
+            jq --arg v "${{ steps.version.outputs.new_version }}" '.version = $v' package.json > tmp.json && mv tmp.json package.json
+          fi
+
       - name: Commit version bump
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .claude-plugin/plugin.json
           [ -f .claude-plugin/marketplace.json ] && git add .claude-plugin/marketplace.json
+          [ -f package.json ] && git add package.json
           git commit -m "chore(release): v${{ steps.version.outputs.new_version }} [skip ci]"
           git push
 
@@ -106,3 +126,15 @@ jobs:
             "dist/parallax-threejs-v${{ steps.version.outputs.new_version }}.zip" \
             --title "v${{ steps.version.outputs.new_version }}" \
             --generate-notes
+
+      # Requires an NPM_TOKEN repo secret (an npm "Automation" token, so it
+      # works without 2FA prompts in CI) — not set up yet as of this
+      # workflow change; this step will fail until that's added under
+      # Settings > Secrets and variables > Actions. --access public is
+      # required for a scoped package's first publish (npm defaults scoped
+      # packages to private, which would otherwise need a paid plan).
+      - name: Publish to npm
+        if: hashFiles('package.json') != ''
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public
