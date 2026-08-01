@@ -83,6 +83,32 @@ PR, independent of a manual UAT run.
 Don't hand-edit the `version` field in a PR — it gets overwritten by the
 next automated bump regardless.
 
+### Release channels
+
+`release.yml`'s workflow dispatch has two independent inputs —
+`bump_type` (how much the number changes) and `channel` (who should see
+it) — not one. Picking `channel: next` instead of `stable`:
+
+- publishes to npm under the `next` dist-tag instead of `latest`, so
+  `npm install @propersloth/parallax-threejs` (no tag) is completely
+  unaffected;
+- marks the GitHub Release `--prerelease`;
+- leaves the `parallax-threejs-stable` marketplace entry's pinned `ref`
+  alone — only a `stable` run moves it.
+
+The `parallax-threejs` marketplace entry (`"./"`) always tracks `main`
+live regardless of channel — there's no way to pin a same-repo source to
+a specific ref, so it isn't a "stable" channel in any real sense, just
+the rolling one. `parallax-threejs-stable` (a separate, explicit
+`github`-sourced entry) is what actually stays put between releases.
+
+Don't cut a `next` release at the exact version number you intend to
+later publish as `stable` (e.g. testing `1.0.0` itself under `next` —
+npm refuses to publish the same version number twice, even under a
+different dist-tag, so that version would be permanently unavailable for
+the real stable release). Cut incremental versions for `next` testing,
+then a fresh bump straight to the intended number when cutting `stable`.
+
 ## Skill content
 
 Only `skills/qa-visual-test-harness/SKILL.md` ships by default — it
