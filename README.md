@@ -1,4 +1,4 @@
-# Parallax
+# Parallax Three.js
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![npm](https://img.shields.io/npm/v/@propersloth/parallax-threejs)](https://www.npmjs.com/package/@propersloth/parallax-threejs)
