@@ -80,9 +80,17 @@ jobs:
     if: github.event.inputs.mode != 'promote'
     runs-on: ubuntu-latest
     steps:
+      # token: BUMP_PAT, not the default GITHUB_TOKEN — see bump-patch.yml's
+      # comments for why: main requires PRs via branch protection, and
+      # GITHUB_TOKEN's github-actions[bot] identity has no bypass for that
+      # rule (confirmed live: GH006 "Changes must be made through a pull
+      # request" on this job's own "Commit version bump" push). BUMP_PAT
+      # must belong to an account with Admin on this repo, same requirement
+      # as bump-patch.yml.
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          token: ${{ secrets.BUMP_PAT }}
 
       - uses: denoland/setup-deno@v2
         with:
@@ -288,9 +296,14 @@ jobs:
     # shipped and defeats the purpose (main may have moved since the
     # next release was cut).
     steps:
+      # token: BUMP_PAT — same reasoning as the release job above: this
+      # job's "Commit the marketplace-entry update" step pushes to main
+      # directly, which the default GITHUB_TOKEN can't do under branch
+      # protection (GH006).
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          token: ${{ secrets.BUMP_PAT }}
 
       - uses: actions/setup-node@v4
         with:
