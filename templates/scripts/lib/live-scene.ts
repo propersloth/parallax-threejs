@@ -26,25 +26,27 @@
 
 import { chromium, type Page } from "playwright";
 
-const BRIDGE_PORT = Deno.env.get("BRIDGE_PORT") ?? "9222";
-
 export async function attachToLiveScene(): Promise<
   { browser: Awaited<ReturnType<typeof chromium.connectOverCDP>>; page: Page }
 > {
+  // Read per-call, not at module scope — this must reflect the env var
+  // at call time (tests set it right before calling), not whatever it
+  // was when this module first loaded.
+  const bridgePort = Deno.env.get("BRIDGE_PORT") ?? "9222";
   const browser = await chromium.connectOverCDP(
-    `http://localhost:${BRIDGE_PORT}`,
+    `http://localhost:${bridgePort}`,
   );
   const contexts = browser.contexts();
   if (contexts.length === 0) {
     throw new Error(
-      `No browser context found at :${BRIDGE_PORT} — is the dev server ` +
+      `No browser context found at :${bridgePort} — is the dev server ` +
         `and threejs-devtools-mcp's bridge actually running? This script ` +
         `attaches to an existing session, it does not start one.`,
     );
   }
   const pages = contexts[0].pages();
   if (pages.length === 0) {
-    throw new Error(`Browser is open at :${BRIDGE_PORT} but has no pages.`);
+    throw new Error(`Browser is open at :${bridgePort} but has no pages.`);
   }
   // Assumes the first page is the one being debugged. If multiple tabs are
   // open this could attach to the wrong one — worth adding a URL filter if
