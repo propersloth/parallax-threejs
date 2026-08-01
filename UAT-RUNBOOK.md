@@ -6,6 +6,18 @@ hardware — treat failures as findings, not surprises. Check off each item;
 log anything that fails in the sign-off table at the end rather than
 stopping to fix it mid-run, unless it blocks a later phase.
 
+> [!NOTE]
+> Every UAT run so far (see Sign-off below) has been on Linux (Raspberry
+> Pi 5) — the maintainer doesn't have Windows hardware to test against.
+> `setup.ts` and the PowerShell setup scripts are written to support
+> Windows, but that support is untested on real hardware, and CI runs
+> exclusively on `ubuntu-latest` (see CONTRIBUTING.md's Testing model),
+> so nothing has ever proven this plugin actually works there end to end.
+> If you have Windows hardware and are willing to run this runbook
+> against a real project, it would be genuinely appreciated — please
+> file findings the same way this doc's own Sign-off section does
+> (numbered, with severity reflecting real-world blast radius).
+
 ---
 
 ## Phase 0 — Environment sanity

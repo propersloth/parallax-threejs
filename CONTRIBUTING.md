@@ -61,6 +61,16 @@ If you add a new test that needs a browser, it goes in Lane 2 — add it to
 both `ci.yml` and `release.yml`. Miss one side of that and it either
 slows down every PR or silently never runs anywhere.
 
+Both lanes run exclusively on `runs-on: ubuntu-latest` — there's no CI
+coverage today proving either lane actually passes on Windows or macOS,
+even though `setup.ts`/the PowerShell scripts are written to support
+Windows. The maintainer doesn't have Windows hardware to test against
+directly. **If you have Windows hardware and want to help, running
+UAT-RUNBOOK.md against a real project and reporting back would be
+genuinely appreciated** — see the note at the top of that file. Adding
+an actual Windows/macOS job to these workflows would also be a welcome
+PR, independent of a manual UAT run.
+
 ## Versioning — you don't need to touch this
 
 `plugin.json`'s version bumps automatically:
