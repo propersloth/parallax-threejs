@@ -24,15 +24,28 @@ these files live there and not hand-duplicated per project.
    it doesn't exist yet. For any task name that already exists in the
    project with a *different* command than the template's, don't
    overwrite it — report the conflict and let the human decide.
-4. **`.mcp.json`**: if `./.mcp.json` doesn't exist yet, copy
+4. **`deno.json` npm resolution**: read
+   `${CLAUDE_PLUGIN_ROOT}/templates/deno-config.json` and merge its
+   `nodeModulesDir` and `imports` entries into `./deno.json` the same way
+   — same conflict rule as step 3. This is required, not optional: if the
+   target project has its own `node_modules/` (any normal npm-based
+   three.js project), Deno auto-detects it and routes the scripts'
+   `playwright`/`pixelmatch`/`pngjs`/`@std/assert` bare specifiers through
+   that local `node_modules/` instead of Deno's own npm cache, where
+   they're never installed — `deno task visual:run` and the other
+   interactive tasks fail immediately with `Could not find a matching
+   package for 'npm:pixelmatch'...` (UAT finding #13). Setting
+   `"nodeModulesDir": "none"` disables that auto-detection; the `imports`
+   entries are what actually let the bare specifiers resolve at all.
+5. **`.mcp.json`**: if `./.mcp.json` doesn't exist yet, copy
    `${CLAUDE_PLUGIN_ROOT}/.mcp.json` (or
    `${CLAUDE_PLUGIN_ROOT}/examples/raspberry-pi/mcp.json` if this is a Pi
    setup — ask if unclear). If one already exists, don't touch it; report
    that it exists and point at the two source files for manual merging.
-5. **Report a summary**: what was added, what already existed and was
+6. **Report a summary**: what was added, what already existed and was
    skipped, and any conflicts that need manual attention — in that order,
    so conflicts are the last (most actionable) thing the person reads.
-6. Remind the person about the `window.scene = scene` prerequisite (see
+7. Remind the person about the `window.scene = scene` prerequisite (see
    README.md) — nothing copied in step 1 resolves anything without it.
 
 This command doesn't install recommended skills or dependencies — that's
