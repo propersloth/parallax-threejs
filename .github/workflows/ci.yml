@@ -23,7 +23,7 @@ jobs:
     # principle; that heavier coverage runs on push/schedule instead and
     # reports back on its own cadence.
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
@@ -37,7 +37,7 @@ jobs:
   typecheck:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
@@ -56,7 +56,7 @@ jobs:
   schema-validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
@@ -86,7 +86,7 @@ jobs:
     # gate that's actually guaranteed to work; this is a bonus check.
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install Claude Code CLI
         run: npm install -g @anthropic-ai/claude-code
       - name: Validate plugin structure
@@ -102,7 +102,7 @@ jobs:
     # implication of support at worst. Checked structurally, not just
     # documented, per "truly not implemented at runtime."
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build the MCP dist
         run: sh scripts/build-mcp-dist.sh
       - name: Assert forbidden paths are absent
