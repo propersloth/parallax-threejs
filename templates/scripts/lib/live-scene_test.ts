@@ -194,6 +194,12 @@ Deno.test("attachToLiveScene launches its own persistent Chromium when nothing i
 
   Deno.env.set("BRIDGE_PORT", String(port));
   Deno.env.set("DEV_PORT", "1"); // nothing needs to actually be there for this test
+  // This test is verifying the launch *mechanism* (port detection, spawn,
+  // CDP attach, reuse), not visual rendering, so it shouldn't depend on
+  // the environment actually having a display — CI runners (confirmed via
+  // an actual Extended Tests run) don't. Real end users still get headed
+  // by default; this only affects this test's own invocation.
+  Deno.env.set("PARALLAX_HEADLESS", "true");
   Deno.chdir(tempCwd);
 
   try {
@@ -231,5 +237,6 @@ Deno.test("attachToLiveScene launches its own persistent Chromium when nothing i
     await Deno.remove(tempCwd, { recursive: true }).catch(() => {});
     Deno.env.delete("BRIDGE_PORT");
     Deno.env.delete("DEV_PORT");
+    Deno.env.delete("PARALLAX_HEADLESS");
   }
 });
