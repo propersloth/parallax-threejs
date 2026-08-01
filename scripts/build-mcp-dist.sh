@@ -12,22 +12,28 @@ set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DIST="$ROOT/dist/parallax-threejs-mcp"
 
-rm -rf "$DIST"
-mkdir -p "$DIST"
+# Stage outside ROOT first — DIST lives under "$ROOT/dist", so copying
+# "$ROOT"/. straight into DIST would recurse into its own target
+# (cp: cannot copy a directory into itself).
+STAGE="$(mktemp -d)"
 
 # Copy everything, then strip what has no MCP equivalent — see the
 # brainstorm's "no MCP equivalent at all" list: subagents, hooks, skills,
 # slash commands, LSP config, and the Claude Code plugin manifest itself.
-cp -r "$ROOT"/. "$DIST"/
+cp -r "$ROOT"/. "$STAGE"/
 rm -rf \
-  "$DIST/agents" \
-  "$DIST/hooks" \
-  "$DIST/skills" \
-  "$DIST/commands" \
-  "$DIST/.claude-plugin" \
-  "$DIST/.lsp.json" \
-  "$DIST/dist" \
-  "$DIST/.git"
+  "$STAGE/agents" \
+  "$STAGE/hooks" \
+  "$STAGE/skills" \
+  "$STAGE/commands" \
+  "$STAGE/.claude-plugin" \
+  "$STAGE/.lsp.json" \
+  "$STAGE/dist" \
+  "$STAGE/.git"
+
+rm -rf "$DIST"
+mkdir -p "$(dirname "$DIST")"
+mv "$STAGE" "$DIST"
 
 echo "Built $DIST — exclusion-copy only, not yet a real MCP server package."
 echo "Still needed for a real release: its own package.json, self-managed"

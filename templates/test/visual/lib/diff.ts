@@ -1,5 +1,5 @@
-import pixelmatch from "npm:pixelmatch";
-import { PNG } from "npm:pngjs";
+import pixelmatch from "pixelmatch";
+import { PNG } from "pngjs";
 import { Buffer } from "node:buffer";
 
 export function diffPngs(a: Uint8Array, b: Uint8Array) {
@@ -17,7 +17,11 @@ export function diffPngs(a: Uint8Array, b: Uint8Array) {
   const { width, height } = imgA;
   const out = new PNG({ width, height });
   const diffPixels = pixelmatch(
-    imgA.data, imgB.data, out.data, width, height,
+    imgA.data,
+    imgB.data,
+    out.data,
+    width,
+    height,
     { threshold: 0.1 },
   );
 

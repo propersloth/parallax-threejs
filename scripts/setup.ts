@@ -15,7 +15,7 @@
 // Uses @clack/prompts via Deno's npm: interop — same pattern already
 // used throughout this project (npm:playwright, npm:pngjs), no new
 // toolchain requirement.
-import * as p from "npm:@clack/prompts";
+import * as p from "@clack/prompts";
 
 function checkCancel<T>(value: T | symbol): T {
   if (p.isCancel(value)) {
@@ -26,7 +26,11 @@ function checkCancel<T>(value: T | symbol): T {
 }
 
 async function run(cmd: string, args: string[]) {
-  const command = new Deno.Command(cmd, { args, stdout: "inherit", stderr: "inherit" });
+  const command = new Deno.Command(cmd, {
+    args,
+    stdout: "inherit",
+    stderr: "inherit",
+  });
   const { success } = await command.output();
   return success;
 }
@@ -36,7 +40,12 @@ async function run(cmd: string, args: string[]) {
 // platform's own script rather than assuming one interpreter everywhere.
 function platformScript(baseName: string): [string, string[]] {
   if (Deno.build.os === "windows") {
-    return ["powershell", ["-ExecutionPolicy", "Bypass", "-File", `scripts/${baseName}.ps1`]];
+    return ["powershell", [
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      `scripts/${baseName}.ps1`,
+    ]];
   }
   return ["sh", [`scripts/${baseName}.sh`]];
 }
@@ -50,7 +59,8 @@ p.note(
 // --- Spector (GL-state debugging) ---
 const wantSpector = checkCancel(
   await p.confirm({
-    message: "Set up Spector for GL-state-level debugging? (clones + builds, one-time)",
+    message:
+      "Set up Spector for GL-state-level debugging? (clones + builds, one-time)",
     initialValue: false,
   }),
 );
@@ -64,7 +74,8 @@ if (wantSpector) {
 // --- General three.js knowledge skill ---
 const wantThreejsSkill = checkCancel(
   await p.confirm({
-    message: "Install general three.js knowledge skill (cloudai-x/threejs-skills)?",
+    message:
+      "Install general three.js knowledge skill (cloudai-x/threejs-skills)?",
     initialValue: true,
   }),
 );
@@ -91,9 +102,21 @@ const physics = checkCancel(
     message: "Physics engine?",
     options: [
       { value: "none", label: "Skip — no physics needed" },
-      { value: "@dimforge/rapier3d", label: "Rapier — recommended default", hint: "fastest, WASM, actively maintained" },
-      { value: "jolt-physics", label: "Jolt Physics", hint: "more features (soft bodies, vehicles), actively maintained" },
-      { value: "cannon-es", label: "cannon-es", hint: "⚠ simplest API, but no longer actively maintained" },
+      {
+        value: "@dimforge/rapier3d",
+        label: "Rapier — recommended default",
+        hint: "fastest, WASM, actively maintained",
+      },
+      {
+        value: "jolt-physics",
+        label: "Jolt Physics",
+        hint: "more features (soft bodies, vehicles), actively maintained",
+      },
+      {
+        value: "cannon-es",
+        label: "cannon-es",
+        hint: "⚠ simplest API, but no longer actively maintained",
+      },
     ],
   }),
 );
@@ -101,12 +124,25 @@ const physics = checkCancel(
 // --- Animation / tweening ---
 const animation = checkCancel(
   await p.select({
-    message: "Animation / tweening library? (AnimationMixer for GLTF/skeletal stays separate regardless)",
+    message:
+      "Animation / tweening library? (AnimationMixer for GLTF/skeletal stays separate regardless)",
     options: [
       { value: "none", label: "Skip — AnimationMixer / hand-rolled only" },
-      { value: "gsap", label: "GSAP — recommended default", hint: "industry standard, fully free since v3.13" },
-      { value: "@theatre/core", label: "Theatre.js", hint: "visual timeline editor, different workflow than code tweening" },
-      { value: "@tweenjs/tween.js", label: "Tween.js", hint: "minimal footprint, fewer features" },
+      {
+        value: "gsap",
+        label: "GSAP — recommended default",
+        hint: "industry standard, fully free since v3.13",
+      },
+      {
+        value: "@theatre/core",
+        label: "Theatre.js",
+        hint: "visual timeline editor, different workflow than code tweening",
+      },
+      {
+        value: "@tweenjs/tween.js",
+        label: "Tween.js",
+        hint: "minimal footprint, fewer features",
+      },
     ],
   }),
 );
@@ -117,7 +153,11 @@ const postprocessing = checkCancel(
     message: "Postprocessing library?",
     options: [
       { value: "none", label: "Skip — built-in EffectComposer only" },
-      { value: "postprocessing", label: "pmndrs/postprocessing — recommended default for WebGL", hint: "more effects, actively maintained" },
+      {
+        value: "postprocessing",
+        label: "pmndrs/postprocessing — recommended default for WebGL",
+        hint: "more effects, actively maintained",
+      },
     ],
   }),
 );
@@ -132,12 +172,18 @@ const audio = checkCancel(
     message: "Audio library?",
     options: [
       { value: "none", label: "Skip — THREE.PositionalAudio (built-in) only" },
-      { value: "howler", label: "Howler.js", hint: "sprites, fades, more mixing control" },
+      {
+        value: "howler",
+        label: "Howler.js",
+        hint: "sprites, fades, more mixing control",
+      },
     ],
   }),
 );
 
-const toInstall = [physics, animation, postprocessing, audio].filter((v) => v !== "none") as string[];
+const toInstall = [physics, animation, postprocessing, audio].filter((v) =>
+  v !== "none"
+) as string[];
 
 if (toInstall.length > 0) {
   const confirmed = checkCancel(
@@ -148,12 +194,25 @@ if (toInstall.length > 0) {
   );
   if (confirmed) {
     const s = p.spinner();
-    s.start(`Adding ${toInstall.length} dependenc${toInstall.length === 1 ? "y" : "ies"}`);
-    const ok = await run("deno", ["add", ...toInstall.map((pkg) => `npm:${pkg}`)]);
-    s.stop(ok ? "Added to deno.json." : "Failed — check output above, may need manual `deno add`.");
+    s.start(
+      `Adding ${toInstall.length} dependenc${
+        toInstall.length === 1 ? "y" : "ies"
+      }`,
+    );
+    const ok = await run("deno", [
+      "add",
+      ...toInstall.map((pkg) => `npm:${pkg}`),
+    ]);
+    s.stop(
+      ok
+        ? "Added to deno.json."
+        : "Failed — check output above, may need manual `deno add`.",
+    );
   }
 } else {
   p.note("Nothing selected — skipping dependency install.", "Dependencies");
 }
 
-p.outro("Done. See docs/RECOMMENDED-SKILLS.md and docs/RECOMMENDED-DEPENDENCIES.md for anything skipped here.");
+p.outro(
+  "Done. See docs/RECOMMENDED-SKILLS.md and docs/RECOMMENDED-DEPENDENCIES.md for anything skipped here.",
+);

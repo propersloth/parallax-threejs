@@ -39,4 +39,8 @@ const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
 for (const [keyframe, png] of Object.entries(shots)) {
   await Deno.writeFile(`${dir}/${timestamp}-${name}-${keyframe}.png`, png);
 }
-console.log(`replayed "${name}" — ${Object.keys(shots).length} keyframe(s) written to ${dir}/`);
+console.log(
+  `replayed "${name}" — ${
+    Object.keys(shots).length
+  } keyframe(s) written to ${dir}/`,
+);
