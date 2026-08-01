@@ -135,6 +135,30 @@ vendored skill bundle in a PR; if you think a specific bundle is worth
 recommending, that's a PR to the recommendations doc, not new content
 under `skills/`.
 
+## Markdown conventions
+
+This repo's markdown files follow [OKF](https://okf.md/spec) (Open
+Knowledge Format) where it applies — a minimal YAML-frontmatter
+convention, not a heavy schema. Concretely:
+
+- **Exempt entirely**: `AGENTS.md` (the spec's own stated position —
+  behavior instructions are a different layer from knowledge, not
+  something OKF covers) and `README.md` files throughout this repo
+  (navigation/meta docs, same bucket).
+- **`type` field added** to existing frontmatter, no other structure
+  changed: `agents/*.md` → `type: Agent Definition`, `commands/*.md` →
+  `type: Slash Command`, `skills/*/SKILL.md` → `type: Skill`.
+- **Vendored content, if you add any, is exempt.** If you install an
+  optional skill bundle per `docs/RECOMMENDED-SKILLS.md`, don't retrofit
+  this repo's OKF conventions onto it — content pulled from an external
+  source you don't curate doesn't get our frontmatter policy imposed on
+  it. (This repo itself no longer ships any vendored skill content, so
+  this only applies to what you add yourself.)
+
+This is deliberately the conformance floor, not a full OKF bundle — no
+`index.md`, no `log.md`; git history and this plugin's release notes
+already cover what those would duplicate.
+
 ## What a good PR here looks like
 
 - Touches one thing, not several unrelated things.

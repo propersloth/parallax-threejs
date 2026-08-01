@@ -1,36 +1,27 @@
 # Parallax
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![npm](https://img.shields.io/npm/v/@propersloth/parallax-threejs)](https://www.npmjs.com/package/@propersloth/parallax-threejs)
 [![CI](https://github.com/propersloth/parallax-threejs/actions/workflows/ci.yml/badge.svg)](https://github.com/propersloth/parallax-threejs/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/propersloth/parallax-threejs/actions/workflows/codeql.yml/badge.svg)](https://github.com/propersloth/parallax-threejs/actions/workflows/codeql.yml)
 
-> Shared-sight debugging for vanilla three.js / GLSL prototypes debugged
-> mostly by eye.
+**Give Claude Code actual eyes on your three.js scene, so it stops guessing and starts diagnosing.**
 
-Most existing tooling in this space either generates shader code via chat,
-or does generic browser automation with no three.js awareness. Parallax
-does neither — it fuses four evidence channels (live scene graph, browser
-console/perf, raw GL state, and pixels) into one correlated diagnostic
-loop, plus a SHA-indexed visual regression suite, so debugging a rendered
-scene stops depending entirely on eyeballing screenshots.
+You're building the three.js project you've always wanted (a portfolio piece, a weird little game, an interactive art thing) mostly by vibe-coding it with Claude. It's going great, right up until something on screen looks *wrong* and you can't say why. So you paste a screenshot. Claude guesses. You try the guess. It doesn't fix it. You paste another screenshot.
 
-## What's actually different here
+That loop isn't your fault. A screenshot is the least informative thing you can debug from: a black object could be an unlit material, a missing texture, a shader error, or the camera clipping through it, and a picture alone can't tell those apart. Parallax gives Claude the same access you'd want if you could see under the hood yourself: the live scene graph, the browser console, raw GPU state, and pixels, correlated together instead of guessed from one alone.
 
-- **Correlated diagnosis, not screenshot guessing.** Before proposing a
-  fix, the core rule (AGENTS.md §2) is to gather evidence from at least two
-  of {scene graph, console, pixels} — a screenshot-only diagnosis is
-  treated as a guess, not a finding.
-- **Three specialized subagents with genuinely distinct jobs**, not three
-  flavors of the same thing: `shader-reviewer` catches binding mismatches
-  *before* anything runs, `visual-debugger` diagnoses runtime symptoms,
-  `scenario-author` turns confirmed fixes into permanent regression
-  coverage.
-- **A real visual regression suite** — screenshots indexed by git SHA,
-  gated on significant diffs, never auto-accepted (a human has to sign off
-  on every accepted change).
-- **AI-DLC aware** (AGENTS.md §8) — if your project runs under AWS's AI-DLC
-  three-phase workflow, this plugin participates in its audit trail rather
-  than operating as an unrelated, silent side process.
+## The stuff you didn't know you were missing
+
+- **"Why is this thing invisible?"** Claude checks the scene graph (materials, transforms, shader compile status), the console (a silently failed texture load, maybe), and the pixels together, then tells you which one actually explains it.
+- **"I tweaked one thing and now I'm scared something else broke without me noticing."** Run `/checkpoint` before and `/diff` after. You get a pixel diff, a console diff, and a scene-graph diff, instead of two browser tabs and your own eyeballs.
+- **"I'm doing the '0.6... okay, 0.7...' dance with a light color or intensity."** `/sweep` renders the whole range at once as a contact sheet, so you see every option side by side instead of bisecting by hand one slow reload at a time.
+- **"I keep manually re-doing the same click-hover-drag just to check something."** `/replay` records the interaction once and reruns it exactly every time, so you're not left wondering if you hovered the same spot as last time.
+- **"Two screenshots look different and I can't tell if that's the bug or the camera drifted."** `/sync-view` pins the camera to an exact, named framing, so a comparison is finally comparing the same shot.
+- **"My shader compiles fine but looks wrong, and the error console is useless."** The `shader-reviewer` subagent catches uniform and attribute mismatches, plus vertex/fragment drift a syntax checker can't see, before you even hit run.
+- **"I want to know my last five fixes didn't quietly wreck the three things I fixed last week."** A git-SHA-indexed visual regression suite flags meaningful changes for your own review. Nothing gets auto-approved behind your back.
+
+Built for solo devs and hobbyists vibe-coding a real three.js/WebGL project with Claude Code. If you're a professional game dev with your own engine and pipeline already, this probably isn't for you. It's scoped tightly and deliberately to vanilla three.js: no React Three Fiber, no framework detection, one stack, done well.
 
 ## Install
 
@@ -39,150 +30,76 @@ scene stops depending entirely on eyeballing screenshots.
 /plugin install parallax-threejs
 ```
 
-(or point Claude Code at this repo directly per the
-[plugin marketplace docs](https://code.claude.com/docs/en/plugin-marketplaces)
-if you're not using a hosted marketplace)
+Prefer installing through npm? `/plugin install parallax-threejs-npm@propersloth` works too, same plugin, just updated via the npm registry instead. These are commands you type directly into a Claude Code session, not a URL to open in a browser.
 
-## Usage example
+## Try it in 60 seconds
 
-Once installed, with your dev server running and `window.scene` exposed:
+Get your dev server running with `window.scene` exposed (see Prerequisites below; it's one line of code, not a big lift), then:
 
 ```
-/checkpoint before-fix
+/checkpoint before
 ```
 
-Captures the current scene graph, console output, and a screenshot as one
-labeled unit under `.parallax/checkpoints/`. Make a change, then:
+That's a snapshot of the scene graph, console, and a screenshot, bundled together as one labeled unit. Now go make the change you were going to make anyway. Then:
 
 ```
-/diff before-fix
+/diff before
 ```
 
-Reports what actually changed — pixel diff ratio, any new console errors,
-scene graph deltas — instead of you eyeballing two screenshots side by
-side. Nothing gets auto-accepted; you decide whether the diff is the fix
-working or a regression.
+Instead of squinting at two screenshots, you get a real report: what moved, what didn't, whether any new console errors showed up, and how big the visual difference is. You decide whether that's the fix working or a regression. Parallax never makes that call for you.
+
+## Your toolkit
+
+| Command | What it's actually for |
+|---|---|
+| `/checkpoint <label>` | Snapshot the scene graph, console, and a screenshot as one unit before you change anything. |
+| `/diff <label>` | Compare right now against that snapshot: pixel diff, console diff, scene-graph diff, one report. |
+| `/sweep <object> <property> <range>` | Render every value in a range at once as a contact sheet, instead of testing values one at a time. |
+| `/replay <scenario>` | Rerun a recorded interaction (hover, click, drag) exactly, instead of doing it by hand again. |
+| `/sync-view <name>` | Snap the camera to an exact, reusable framing so comparisons stay honest. |
+| `/init` | One-time setup: scaffolds the scripts above into your actual project. Run this first. |
+
+Behind these, three specialized subagents handle the heavier diagnostic work automatically: `shader-reviewer` catches shader bugs before they ever run, `visual-debugger` correlates all four evidence channels when something's actively wrong, and `scenario-author` turns a confirmed fix into permanent regression coverage. You generally won't call these by name; Claude reaches for the right one based on what you're doing.
 
 ## Prerequisites
 
-- A vanilla three.js project (no React Three Fiber — see AGENTS.md §0 for
-  why the scope is deliberately narrow)
-- Your prototype must expose `window.scene = scene` for the interactive
-  debug scripts (`/checkpoint`, `/sweep`) to resolve anything — a
-  widely-used three.js debugging convention, not something invented here,
-  but not automatic either
-- For `/sync-view`: also expose `window.__THREE_CAMERA__ = camera`.
-  threejs-devtools-mcp's bridge only finds the camera two ways — this
-  global, or traversing the scene graph for the first object with
-  `.isCamera` set — and a camera that's never added as a scene child
-  (an ordinary, valid three.js pattern) is invisible to the traversal
-  fallback. Without this global, `/sync-view` fails with "No camera
-  found in scene" even though the scene and camera are both perfectly
-  valid (confirmed against threejs-devtools-mcp@0.2.1's actual bridge
-  source — UAT finding #10)
-- Node.js and Deno on your system PATH:
+- **A vanilla three.js project.** No React Three Fiber. See the opening of `AGENTS.md` if you're curious why the scope stays this narrow on purpose.
+- **Your scene needs to be reachable.** Add `window.scene = scene` somewhere in your setup code. This is how the debug tools find anything at all. It's a common three.js debugging convention, not something Parallax invented, but it won't happen on its own.
+- **For `/sync-view` specifically**, also expose `window.__THREE_CAMERA__ = camera`. Without it, camera discovery falls back to scanning the scene graph for the first object with `.isCamera` set, which misses a camera that's constructed but never added as a scene child (an ordinary, valid pattern). If `/sync-view` says "No camera found" even though your scene is fine, this is almost always why.
+- **Node.js and Deno**, both on your system `PATH`:
 
   ```bash
-  # Deno — macOS/Linux
+  # Deno, macOS/Linux
   curl -fsSL https://deno.land/install.sh | sh
   ```
   ```powershell
-  # Deno — Windows
+  # Deno, Windows
   irm https://deno.land/install.ps1 | iex
   ```
 
-  Node.js: install from [nodejs.org](https://nodejs.org) or your
-  platform's package manager (`brew install node`, `apt install nodejs`,
-  the Windows installer) — needed for the `npx`-based MCP servers
-  regardless of OS.
+  Node.js: grab it from [nodejs.org](https://nodejs.org) or your platform's package manager (`brew install node`, `apt install nodejs`, the Windows installer). Needed for the `npx`-based tools regardless of OS.
 
-## What's here vs. what you bring
+## What happens under the hood
 
-This repo is the plugin only — the four MCP servers it configures
-(chrome-devtools-mcp, threejs-devtools-mcp, playwright-mcp, Spector) are
-external dependencies fetched at install/setup time, not vendored.
-`scripts/setup-spector.sh` handles Spector's one-time clone-and-build step.
+Installing the plugin wires up four browser/GPU inspection tools automatically (chrome-devtools-mcp, threejs-devtools-mcp, playwright-mcp, and Spector for raw GL state), so you don't configure any of this by hand. The one exception is Spector, which needs a one-time build step (`scripts/setup-spector.sh`) since it's cloned and compiled rather than installed like the others.
 
-Run `/init` in your actual three.js project to scaffold the interactive
-debug scripts and visual regression harness into it — idempotent, only
-adds what's missing. See `commands/init.md` for exactly what it does.
+Run `/init` once in your actual project to copy in the interactive scripts and the visual regression harness. It's idempotent, so running it again later only fills in anything new and never overwrites your own edits.
 
-Skills: only `qa-visual-test-harness` ships by default — it documents
-this plugin's own regression suite, which nothing external can
-substitute for. General three.js/WebGL knowledge is deliberately not
-bundled; see [docs/RECOMMENDED-SKILLS.md](docs/RECOMMENDED-SKILLS.md) for
-optional additions, or bring whatever skill bundle you already prefer.
+Want general three.js/WebGL knowledge on top of the debugging loop? That's genuinely optional and not bundled. See `docs/RECOMMENDED-SKILLS.md` for a curated list, or bring whatever you already use.
 
-## Full behavioral spec
+## When something's not working
 
-`AGENTS.md` at the repo root is the complete instruction set Claude reads
-when this plugin is active — routing rules, the evidence-correlation
-discipline, the AI-DLC integration, all of it. This README is the human
-quick-start; AGENTS.md is the actual spec.
+- **GLSL diagnostics not showing up.** Check `/plugin` → Errors for a missing-binary message first. `shader_language_server` needs to be on your `PATH` separately from the plugin itself. Installed it via `cargo install` and it's still not found? Make sure `~/.cargo/bin` is on `PATH` for the process running Claude, not just your interactive shell. Those can differ.
+- **TypeScript diagnostics not showing up.** The official LSP plugin doesn't ship a binary: `npm install -g typescript-language-server typescript`.
+- **TypeScript LSP says "Could not find a valid TypeScript installation"** even though `typescript` is right there in your project. This is a Claude Code LSP-rooting quirk (it roots at your session's working directory, not the specific file's project), not a bug in this plugin or in `typescript-language-server` itself. Fix: make sure your session's working directory is the actual TypeScript project you need diagnostics for.
+- **`/checkpoint` or `/sweep` can't resolve an object.** You're missing `window.scene = scene`. See Prerequisites above.
+- **Spector tools missing.** Run `scripts/setup-spector.sh` once. It's a clone-and-build step, not an npm install, so it doesn't happen automatically.
+- **Performance numbers look off on Raspberry Pi.** Read `AGENTS.md` §7a before trusting any FPS/timing number on that hardware specifically. It's a known GPU-pipeline quirk on that platform, not a bug here.
 
-## Markdown conventions
+## Want the deep end?
 
-This repo's markdown files follow [OKF](https://okf.md/spec) (Open
-Knowledge Format) where it applies — a minimal YAML-frontmatter
-convention, not a heavy schema. Concretely:
-
-- **Exempt entirely**: `AGENTS.md` (the spec's own stated position —
-  behavior instructions are a different layer from knowledge, not
-  something OKF covers) and `README.md` files throughout this repo
-  (navigation/meta docs, same bucket).
-- **`type` field added** to existing frontmatter, no other structure
-  changed: `agents/*.md` → `type: Agent Definition`, `commands/*.md` →
-  `type: Slash Command`, `skills/*/SKILL.md` → `type: Skill`.
-- **Vendored content, if you add any, is exempt.** If you install an
-  optional skill bundle per `docs/RECOMMENDED-SKILLS.md`, don't retrofit
-  this repo's OKF conventions onto it — content pulled from an external
-  source you don't curate doesn't get our frontmatter policy imposed on
-  it. (This repo itself no longer ships any vendored skill content, so
-  this only applies to what you add yourself.)
-
-This is deliberately the conformance floor, not a full OKF bundle — no
-`index.md`, no `log.md`; git history and this plugin's release notes
-already cover what those would duplicate.
-
-## Troubleshooting
-
-- **GLSL/LSP diagnostics not appearing** — check `/plugin` → Errors for a
-  missing-binary message before assuming `.lsp.json` is misconfigured;
-  `shader_language_server` has to be on PATH separately. If you installed
-  it via `cargo install` and it's still not found, verify PATH in the
-  actual Claude Code process, not just your own shell — if whatever
-  launches `claude` execs it directly rather than through a login/
-  interactive shell, `~/.cargo/bin` never gets onto PATH even after a
-  full restart, since `.bashrc`/`.profile` (where `cargo install` usually
-  adds it) never gets sourced (UAT finding #5).
-- **TS/JS LSP not installed** — the official `typescript-lsp` plugin
-  ships no binary; install it separately: `npm install -g
-  typescript-language-server typescript`.
-- **TS/JS LSP fails with "Could not find a valid TypeScript
-  installation"** even though `typescript` is a real local dependency of
-  the project you're editing — confirmed (UAT finding #7) this is Claude
-  Code's own LSP client rooting the server at your session's workspace
-  directory, not the specific file's actual project root; verified
-  directly by driving `typescript-language-server`'s `initialize`
-  handshake by hand with different `rootUri` values — it succeeds when
-  rooted at the file's real project and fails with this exact message
-  when rooted anywhere else, regardless of whether that other project
-  has `typescript` installed. Not a bug in `typescript-language-server`
-  itself, and not something this plugin's own code can influence (it
-  doesn't control how Claude Code roots LSP servers). If you hit this,
-  make sure your Claude Code session's own working directory is the
-  TypeScript project you need diagnostics for, not a parent or sibling
-  directory.
-- **`/checkpoint` or `/sweep` errors resolving an object** — your
-  prototype needs `window.scene = scene` exposed somewhere; nothing in
-  `scripts/` can resolve anything without it.
-- **Spector tools not available** — run `scripts/setup-spector.sh` once;
-  it's vendored (cloned + built), not npm-installable, so it doesn't
-  happen automatically on plugin install.
-- **Performance numbers look wrong on Raspberry Pi** — read AGENTS.md
-  §7a before trusting FPS/timing output on that hardware specifically;
-  it's a documented hardware limitation, not a bug in this plugin.
+`AGENTS.md` is the complete instruction set Claude reads when this plugin is active: every routing rule, the evidence-correlation discipline behind the debug loop, all of it. This README is the pitch and the quick start; `AGENTS.md` is the real spec. Looking to contribute? See `CONTRIBUTING.md`.
 
 ## License
 
-MIT — see LICENSE.
+MIT. See [LICENSE](LICENSE).
