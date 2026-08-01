@@ -24,12 +24,16 @@
 // complete source; treat this as a lightweight supplement, not a
 // replacement.
 
-import { chromium, type Page } from "npm:playwright";
+import { chromium, type Page } from "playwright";
 
 const BRIDGE_PORT = Deno.env.get("BRIDGE_PORT") ?? "9222";
 
-export async function attachToLiveScene(): Promise<{ browser: Awaited<ReturnType<typeof chromium.connectOverCDP>>; page: Page }> {
-  const browser = await chromium.connectOverCDP(`http://localhost:${BRIDGE_PORT}`);
+export async function attachToLiveScene(): Promise<
+  { browser: Awaited<ReturnType<typeof chromium.connectOverCDP>>; page: Page }
+> {
+  const browser = await chromium.connectOverCDP(
+    `http://localhost:${BRIDGE_PORT}`,
+  );
   const contexts = browser.contexts();
   if (contexts.length === 0) {
     throw new Error(
@@ -48,10 +52,25 @@ export async function attachToLiveScene(): Promise<{ browser: Awaited<ReturnType
   return { browser, page: pages[0] };
 }
 
+// Minimal shape of a three.js Object3D as seen from the browser side —
+// just the fields getSceneSummary actually reads. Not the real THREE
+// types since this callback is serialized and run in-page, without
+// three.js's own type declarations available to Deno's checker.
+interface Object3DLike {
+  name: string;
+  type: string;
+  position?: { x: number; y: number; z: number };
+  visible: boolean;
+  material?: { type: string };
+  traverse(callback: (obj: Object3DLike) => void): void;
+  getObjectByName(name: string): Object3DLike | undefined;
+  [key: string]: unknown;
+}
+
 export async function getSceneSummary(page: Page) {
   return await page.evaluate(() => {
     // @ts-ignore - browser global
-    const scene = window.scene;
+    const scene = globalThis.scene as Object3DLike | undefined;
     if (!scene) {
       throw new Error(
         "window.scene is not defined on this page. This script requires " +
@@ -60,11 +79,13 @@ export async function getSceneSummary(page: Page) {
       );
     }
     const objects: Array<Record<string, unknown>> = [];
-    scene.traverse((obj: any) => {
+    scene.traverse((obj) => {
       objects.push({
         name: obj.name || "(unnamed)",
         type: obj.type,
-        position: obj.position ? [obj.position.x, obj.position.y, obj.position.z] : undefined,
+        position: obj.position
+          ? [obj.position.x, obj.position.y, obj.position.z]
+          : undefined,
         visible: obj.visible,
         materialType: obj.material?.type,
       });
@@ -73,33 +94,50 @@ export async function getSceneSummary(page: Page) {
   });
 }
 
-export async function getProperty(page: Page, objectName: string, path: string) {
+export async function getProperty(
+  page: Page,
+  objectName: string,
+  path: string,
+) {
   return await page.evaluate(
     ({ objectName, path }) => {
-      // @ts-ignore
-      const scene = window.scene;
+      // @ts-ignore - browser global
+      const scene = globalThis.scene as Object3DLike | undefined;
       if (!scene) throw new Error("window.scene is not defined on this page.");
       const target = scene.getObjectByName(objectName);
-      if (!target) throw new Error(`No object named "${objectName}" found in the scene.`);
-      let obj: any = target;
-      for (const part of path.split(".")) obj = obj?.[part];
+      if (!target) {
+        throw new Error(`No object named "${objectName}" found in the scene.`);
+      }
+      let obj: unknown = target;
+      for (const part of path.split(".")) {
+        obj = (obj as Record<string, unknown> | undefined)?.[part];
+      }
       return obj;
     },
     { objectName, path },
   );
 }
 
-export async function setProperty(page: Page, objectName: string, path: string, value: unknown) {
+export async function setProperty(
+  page: Page,
+  objectName: string,
+  path: string,
+  value: unknown,
+) {
   await page.evaluate(
     ({ objectName, path, value }) => {
-      // @ts-ignore
-      const scene = window.scene;
+      // @ts-ignore - browser global
+      const scene = globalThis.scene as Object3DLike | undefined;
       if (!scene) throw new Error("window.scene is not defined on this page.");
       const target = scene.getObjectByName(objectName);
-      if (!target) throw new Error(`No object named "${objectName}" found in the scene.`);
+      if (!target) {
+        throw new Error(`No object named "${objectName}" found in the scene.`);
+      }
       const parts = path.split(".");
-      let obj: any = target;
-      for (let i = 0; i < parts.length - 1; i++) obj = obj[parts[i]];
+      let obj = target as Record<string, unknown>;
+      for (let i = 0; i < parts.length - 1; i++) {
+        obj = obj[parts[i]] as Record<string, unknown>;
+      }
       obj[parts[parts.length - 1]] = value;
     },
     { objectName, path, value },

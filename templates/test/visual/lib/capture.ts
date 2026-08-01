@@ -1,6 +1,6 @@
 // Requires the Playwright browser binaries to be installed once:
 //   deno run -A npm:playwright install chromium
-import { chromium } from "npm:playwright";
+import { chromium } from "playwright";
 import type { Scenario } from "./types.ts";
 
 export async function captureScenario(
@@ -8,7 +8,9 @@ export async function captureScenario(
   scenario: Scenario,
 ): Promise<Record<string, Uint8Array>> {
   const browser = await chromium.launch();
-  const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  const page = await browser.newPage({
+    viewport: { width: 1280, height: 800 },
+  });
   const shots: Record<string, Uint8Array> = {};
 
   await page.goto(new URL(scenario.path, baseUrl).toString());

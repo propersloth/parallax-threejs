@@ -11,7 +11,10 @@ const dir = ".parallax/checkpoints";
 async function findLatest(matchLabel?: string): Promise<string | null> {
   const entries: string[] = [];
   for await (const e of Deno.readDir(dir)) {
-    if (e.name.endsWith(".json") && (!matchLabel || e.name.includes(`-${matchLabel}.json`))) {
+    if (
+      e.name.endsWith(".json") &&
+      (!matchLabel || e.name.includes(`-${matchLabel}.json`))
+    ) {
       entries.push(e.name);
     }
   }
@@ -21,16 +24,30 @@ async function findLatest(matchLabel?: string): Promise<string | null> {
 
 const priorName = await findLatest(label);
 if (!priorName) {
-  console.log(`No prior checkpoint found${label ? ` for label "${label}"` : ""} — nothing to diff against.`);
+  console.log(
+    `No prior checkpoint found${
+      label ? ` for label "${label}"` : ""
+    } — nothing to diff against.`,
+  );
   Deno.exit(0);
 }
 
 // Run a fresh checkpoint via the same script diff.md's step 2 already calls.
 const fresh = await new Deno.Command("deno", {
-  args: ["run", "--allow-net", "--allow-read", "--allow-write", "--allow-env", "scripts/checkpoint.ts", label ?? "diff-current"],
+  args: [
+    "run",
+    "--allow-net",
+    "--allow-read",
+    "--allow-write",
+    "--allow-env",
+    "scripts/checkpoint.ts",
+    label ?? "diff-current",
+  ],
 }).output();
 if (!fresh.success) {
-  console.error("checkpoint.ts failed while capturing the fresh state for comparison.");
+  console.error(
+    "checkpoint.ts failed while capturing the fresh state for comparison.",
+  );
   Deno.exit(1);
 }
 
@@ -45,12 +62,18 @@ const freshPng = await Deno.readFile(`${dir}/${freshBase}.png`);
 
 const { ratio } = diffPngs(priorPng, freshPng);
 
-const newConsoleMessages = freshData.console.filter((m: string) => !priorData.console.includes(m));
+const newConsoleMessages = freshData.console.filter((m: string) =>
+  !priorData.console.includes(m)
+);
 
-console.log(JSON.stringify({
-  compared: { prior: priorBase, fresh: freshBase },
-  pixelDiffRatio: ratio,
-  newConsoleMessages,
-  sceneObjectCountPrior: priorData.scene.length,
-  sceneObjectCountFresh: freshData.scene.length,
-}, null, 2));
+console.log(JSON.stringify(
+  {
+    compared: { prior: priorBase, fresh: freshBase },
+    pixelDiffRatio: ratio,
+    newConsoleMessages,
+    sceneObjectCountPrior: priorData.scene.length,
+    sceneObjectCountFresh: freshData.scene.length,
+  },
+  null,
+  2,
+));

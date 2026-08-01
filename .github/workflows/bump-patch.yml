@@ -5,9 +5,19 @@ name: Auto-bump patch version
 # [skip ci] in the bot's own commit message prevents this push from
 # re-triggering itself (GitHub Actions honors this natively) — the
 # actor check below is a redundant second guard against the same loop.
+#
+# Pushes with BUMP_PAT (a fine-grained PAT scoped to this repo, Contents:
+# read/write, owned by a repo Admin) rather than the default GITHUB_TOKEN.
+# main requires PRs via branch protection, and GITHUB_TOKEN's
+# github-actions[bot] identity has no bypass for that rule (confirmed
+# live: GH006 "Changes must be made through a pull request"). enforce_admins
+# is false, which only exempts the Admin role specifically — Write/Maintain
+# do not qualify — so BUMP_PAT must belong to an account with Admin on this
+# repo (e.g. the owner).
 on:
   push:
     branches: [main]
+  workflow_dispatch: {}
 
 permissions:
   contents: write
@@ -20,6 +30,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          token: ${{ secrets.BUMP_PAT }}
 
       - name: Bump patch version
         id: bump

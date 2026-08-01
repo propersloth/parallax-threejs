@@ -3,9 +3,16 @@
 // step (which only checks two specific files), or a tool that assumes
 // valid config. jsr:@std/yaml rather than pulling in Python, matching
 // this project's existing all-Deno toolchain.
-import { parse as parseYaml } from "jsr:@std/yaml";
+import { parse as parseYaml } from "@std/yaml";
 
-const EXCLUDE = new Set([".git", "node_modules", "vendor", "dist", ".parallax", ".vscode"]);
+const EXCLUDE = new Set([
+  ".git",
+  "node_modules",
+  "vendor",
+  "dist",
+  ".parallax",
+  ".vscode",
+]);
 // .vscode/*.json is excluded deliberately, not an oversight: VS Code's own
 // config files are JSONC (comments allowed) by convention, which strict
 // JSON.parse() below would reject even though they're valid for VS Code.

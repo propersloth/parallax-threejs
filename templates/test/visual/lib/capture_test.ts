@@ -2,7 +2,7 @@
 // Deno.serve() hosts the fixture in-process for the duration of the
 // test, so this needs no separate server, no fixture files on disk for
 // this one, and no network beyond localhost.
-import { assertEquals, assertRejects } from "jsr:@std/assert";
+import { assertEquals, assertRejects } from "@std/assert";
 import { captureScenario } from "./capture.ts";
 import type { Scenario } from "./types.ts";
 
@@ -13,10 +13,13 @@ const FIXTURE_HTML = `<!doctype html>
 <div id="target">hello</div>
 </body></html>`;
 
-async function withFixtureServer<T>(fn: (baseUrl: string) => Promise<T>): Promise<T> {
+async function withFixtureServer<T>(
+  fn: (baseUrl: string) => Promise<T>,
+): Promise<T> {
   const server = Deno.serve(
     { port: 0, onListen: () => {} },
-    () => new Response(FIXTURE_HTML, { headers: { "content-type": "text/html" } }),
+    () =>
+      new Response(FIXTURE_HTML, { headers: { "content-type": "text/html" } }),
   );
   const port = (server.addr as Deno.NetAddr).port;
   try {
@@ -35,7 +38,10 @@ Deno.test("captureScenario drives waitForSelector, click, evaluate, and keyframe
         { action: "waitForSelector", selector: "canvas" },
         { action: "keyframe", name: "initial" },
         { action: "click", selector: "#btn" },
-        { action: "evaluate", script: "window.__clicked = document.title === 'clicked'" },
+        {
+          action: "evaluate",
+          script: "window.__clicked = document.title === 'clicked'",
+        },
         { action: "keyframe", name: "after-click" },
       ],
     };
@@ -68,7 +74,10 @@ Deno.test("captureScenario's wait step actually delays execution", async () => {
 Deno.test("captureScenario's dragOrbit step throws a clear error when no canvas exists", async () => {
   const server = Deno.serve(
     { port: 0, onListen: () => {} },
-    () => new Response("<!doctype html><html><body>no canvas here</body></html>", { headers: { "content-type": "text/html" } }),
+    () =>
+      new Response("<!doctype html><html><body>no canvas here</body></html>", {
+        headers: { "content-type": "text/html" },
+      }),
   );
   const port = (server.addr as Deno.NetAddr).port;
   try {
