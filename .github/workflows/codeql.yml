@@ -1,8 +1,11 @@
 name: CodeQL
 
+# No push trigger: main is PR-gated (branch protection), so every commit
+# that lands on main was already analyzed by the pull_request run below on
+# that exact code — a push trigger here would just re-run CodeQL a second
+# time on the same content. The weekly schedule still re-scans unchanged
+# code against newly-published CodeQL query updates.
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
   schedule:

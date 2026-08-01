@@ -29,8 +29,31 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
+      - name: Cache Deno dependencies
+        # See ci.yml's identical step — deno.json pulls real npm packages,
+        # and denoland/setup-deno has no built-in cache flag.
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/deno
+          key: ${{ runner.os }}-deno-${{ hashFiles('deno.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-deno-
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('deno.lock') }}
       - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: deno run -A npm:playwright install chromium --with-deps
+      - name: Install Playwright OS dependencies only (cache hit)
+        # The browser binary cache doesn't cover apt-installed OS libraries,
+        # and the runner VM is fresh every run regardless of cache hit — so
+        # a cache hit still needs this, just not the (slow) browser download
+        # that install --with-deps would otherwise repeat.
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: deno run -A npm:playwright install-deps chromium
       - name: Run Lane 2 tests
         # --allow-all, not a scoped flag: playwright-core's internal
         # isWsl() check does existsSync() on /proc/sys/fs/binfmt_misc/...,

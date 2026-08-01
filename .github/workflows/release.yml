@@ -95,6 +95,15 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
+      - name: Cache Deno dependencies
+        # See ci.yml's identical step — deno.json pulls real npm packages,
+        # and denoland/setup-deno has no built-in cache flag.
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/deno
+          key: ${{ runner.os }}-deno-${{ hashFiles('deno.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-deno-
 
       # registry-url here is what makes `npm publish` later pick up
       # NODE_AUTH_TOKEN automatically (it writes a scoped .npmrc) — this
@@ -137,8 +146,21 @@ jobs:
         # and the Playwright-importing test module gets loaded anyway
         # (uncaught NotCapable error, no --allow-env).
         run: deno test --allow-run=git --allow-read --allow-write --ignore=templates/test/visual/lib/capture_test.ts,templates/scripts/lib/live-scene_test.ts templates/ scripts/ hooks/
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('deno.lock') }}
       - name: Install Playwright browsers (for Lane 2)
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: deno run -A npm:playwright install chromium --with-deps
+      - name: Install Playwright OS dependencies only (cache hit)
+        # See extended-tests.yml's identical step — the browser binary
+        # cache doesn't cover apt-installed OS libraries, which a fresh
+        # runner VM needs regardless of cache hit.
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: deno run -A npm:playwright install-deps chromium
       - name: Run extended tests (Lane 2 — browser-based, justified at release time)
         # --allow-all, not a scoped flag: see extended-tests.yml's identical
         # step — playwright-core's internal isWsl() check does existsSync()
