@@ -15,6 +15,19 @@ Tracking toward the 1.0.0 release. Update this section with real UAT
 results before cutting the tag — see the UAT runbook.
 
 ### Added
+- npm-based plugin distribution: `package.json`, `npm publish` support, and
+  the `parallax-threejs-npm` marketplace entry (installs/updates via the npm
+  registry instead of this git repo), alongside the existing git-based
+  `parallax-threejs` entry.
+- Three-mode release pipeline in `release.yml` — `next` (fresh pre-release,
+  published under npm's `next` dist-tag, GitHub Release marked prerelease),
+  `promote` (relabel an already-published `next` build as stable — no
+  rebuild, no republish, no new version number), and `direct-stable` (cut
+  straight to stable for low-risk changes, skipping the pre-release cycle).
+  See `docs/RELEASE-PROCESS.md` for the full worked walkthrough.
+- CI now caches Deno's npm/jsr dependency downloads and Playwright's
+  Chromium binary across jobs and runs, instead of re-fetching both from
+  scratch every time.
 - `.vscode/` workspace configuration — recommended extensions, Deno as
   the TS/JS formatter, one-click tasks mirroring every CI check, and a
   Chrome-attach debug config wired to the same `BRIDGE_PORT`
@@ -54,7 +67,31 @@ results before cutting the tag — see the UAT runbook.
   default; general three.js/WebGL knowledge skills are optional, not
   vendored (see `docs/RECOMMENDED-SKILLS.md`).
 
+### Fixed
+- `release.yml` had three bugs that would have failed the very first live
+  run of the release pipeline, all found by actually running it rather than
+  by review alone: Lane 1's `deno test` path order didn't match the fix
+  already present in `ci.yml` (the `--ignore` glob silently stopped
+  matching, crashing on an unrelated Playwright import); Lane 2 and the
+  plugin/marketplace schema-validation steps were each missing a required
+  flag (`--allow-all`, `-c ajv-formats`) that their `ci.yml`/`extended-tests.yml`
+  counterparts already carried; and the version-bump commit pushed with the
+  default `GITHUB_TOKEN`, which branch protection rejects outright (`main`
+  requires PRs) — needed the same `BUMP_PAT` `bump-patch.yml` already used.
+- Removed a redundant CodeQL `push` trigger: with `main` PR-gated, every
+  merge was being scanned twice (once on the PR, again on the resulting
+  merge commit) for no added coverage.
+
+### Changed
+- `bump-patch.yml`'s Actions-tab display name shortened to "Auto-bump".
+
 ### Known limitations at time of writing
+- **On this package's very first release cycle**, npm's `latest` dist-tag
+  won't exist at all until the first `promote` run completes — until then,
+  the `parallax-threejs-npm` marketplace entry and a bare
+  `npm install @propersloth/parallax-threejs` both fail outright. See the
+  warning in `docs/RELEASE-PROCESS.md`'s Step 0. Use the git-based
+  `parallax-threejs` entry, or `@next`, in the meantime.
 - Real-hardware UAT (2026-07-31, Raspberry Pi 5, against `ceres`, a real
   npm-based three.js prototype) found 13 findings — all now resolved.
   4 fixed live during the run, 8 more fixed post-run (#8, #9, #10, #11,

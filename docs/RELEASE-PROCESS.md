@@ -63,6 +63,19 @@ shipping sight-unseen — which, realistically, is most releases.
 | `parallax-threejs-stable` marketplace entry | *(doesn't exist yet — no stable release has ever been cut through this pipeline)* |
 | GitHub Releases | none cut via `release.yml` yet |
 
+> [!WARNING]
+> **Until `latest` exists, the `parallax-threejs-npm` marketplace entry (and a
+> bare `npm install @propersloth/parallax-threejs`) will fail outright.**
+> `parallax-threejs-npm` is deliberately unpinned — it always resolves to
+> whatever npm's `latest` dist-tag currently points at — and `next` never
+> touches `latest`. On this package's very first release cycle specifically,
+> that means there is no `latest` at all until the first `promote` run ever
+> completes: don't point anyone (including yourself, testing) at
+> `parallax-threejs-npm` before then. Test a `next` build via
+> `npm install @propersloth/parallax-threejs@next` directly (Step 2 below),
+> or via the rolling git-based `parallax-threejs` marketplace entry, which is
+> unaffected since it tracks `main` directly rather than any npm tag.
+
 ### Step 1 — cut the pre-release
 
 Actions → **Release** → **Run workflow**:
