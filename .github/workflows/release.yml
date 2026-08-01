@@ -138,9 +138,22 @@ jobs:
         # unscoped --allow-all regardless of how --allow-read is scoped.
         run: deno test --allow-all templates/test/visual/lib/capture_test.ts templates/scripts/lib/live-scene_test.ts
       - name: Validate plugin.json against schema
+        # -c ajv-formats registers the "uri" format keyword the schema uses
+        # (e.g. on `homepage`) — see ci.yml's identical step. Without it ajv
+        # treats the schema itself as invalid ("unknown format 'uri'
+        # ignored"), which fails validation regardless of plugin.json's
+        # actual content.
         run: |
           curl -sL https://www.schemastore.org/claude-code-plugin-manifest.json -o /tmp/plugin-schema.json
-          npx --yes ajv-cli validate -s /tmp/plugin-schema.json -d .claude-plugin/plugin.json
+          npx --yes -p ajv-cli -p ajv-formats ajv validate -c ajv-formats -s /tmp/plugin-schema.json -d .claude-plugin/plugin.json
+      - name: Validate marketplace.json against the official schema, if present
+        run: |
+          if [ -f .claude-plugin/marketplace.json ]; then
+            curl -sL https://www.schemastore.org/claude-code-marketplace.json -o /tmp/marketplace-schema.json
+            npx --yes -p ajv-cli -p ajv-formats ajv validate -c ajv-formats -s /tmp/marketplace-schema.json -d .claude-plugin/marketplace.json
+          else
+            echo "No marketplace.json yet — skipping."
+          fi
 
       - name: Compute new version
         id: version
