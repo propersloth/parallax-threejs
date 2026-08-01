@@ -64,17 +64,24 @@ shipping sight-unseen — which, realistically, is most releases.
 | GitHub Releases | none cut via `release.yml` yet |
 
 > [!WARNING]
-> **Until `latest` exists, the `parallax-threejs-npm` marketplace entry (and a
-> bare `npm install @propersloth/parallax-threejs`) will fail outright.**
-> `parallax-threejs-npm` is deliberately unpinned — it always resolves to
-> whatever npm's `latest` dist-tag currently points at — and `next` never
-> touches `latest`. On this package's very first release cycle specifically,
-> that means there is no `latest` at all until the first `promote` run ever
-> completes: don't point anyone (including yourself, testing) at
-> `parallax-threejs-npm` before then. Test a `next` build via
-> `npm install @propersloth/parallax-threejs@next` directly (Step 2 below),
-> or via the rolling git-based `parallax-threejs` marketplace entry, which is
-> unaffected since it tracks `main` directly rather than any npm tag.
+> **This table assumes the package already has a real `latest` on npm from
+> some prior publish** (the normal, ongoing case this walkthrough is written
+> for) — under that condition, `next` genuinely leaves `latest` untouched, as
+> the rest of this walkthrough describes.
+>
+> **A package's very first publish ever is a real exception, confirmed
+> directly against the registry, not just documented behavior:** publishing
+> `0.3.27` under `--tag next` for this package's actual first release also
+> set `latest` to `0.3.27` — npm needs *some* version to serve a bare
+> `npm install <pkg>` from, and with zero prior history there's nothing else
+> for it to point at. This only happens once, on truly the first publish; it
+> does not recur on later `next` cuts once any version has ever been
+> published (that's the normal case this table depicts). Practically: on a
+> brand-new package's first-ever release, there is no npm-side "untested,
+> not public yet" window the way this process gives you on every subsequent
+> release — treat that first version with the same care you would a stable
+> cut, or publish an intentionally-throwaway placeholder version first if
+> you need a real pre-release window from day one.
 
 ### Step 1 — cut the pre-release
 

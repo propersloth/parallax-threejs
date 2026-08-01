@@ -103,12 +103,16 @@ results before cutting the tag — see the UAT runbook.
   merge commit) for no added coverage.
 
 ### Known limitations at time of writing
-- **On this package's very first release cycle**, npm's `latest` dist-tag
-  won't exist at all until the first `promote` run completes — until then,
-  the `parallax-threejs-npm` marketplace entry and a bare
-  `npm install @propersloth/parallax-threejs` both fail outright. See the
-  warning in `docs/RELEASE-PROCESS.md`'s Step 0. Use the git-based
-  `parallax-threejs` entry, or `@next`, in the meantime.
+- **A package's very first npm publish sets `latest` too, regardless of
+  `--tag`** — confirmed directly against the registry on this project's
+  actual first release: `npm publish --tag next` for `0.3.27` (this
+  package's first publish ever) also set `latest` to `0.3.27`, since npm
+  needs some version to serve a bare `npm install` from and there was no
+  prior history to leave alone. This only happens once, on a true first
+  publish — every `next` cut after that leaves `latest` alone as intended.
+  See `docs/RELEASE-PROCESS.md`'s Step 0 for the corrected explanation
+  (this superseded an earlier, incorrect version of this note that assumed
+  `latest` wouldn't exist until `promote`).
 - Real-hardware UAT (2026-07-31, Raspberry Pi 5, against `ceres`, a real
   npm-based three.js prototype) found 13 findings — all now resolved.
   4 fixed live during the run, 8 more fixed post-run (#8, #9, #10, #11,
