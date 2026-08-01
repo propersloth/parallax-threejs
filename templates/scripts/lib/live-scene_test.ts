@@ -7,8 +7,8 @@
 // fixture. attachToLiveScene() itself (the CDP-connection mechanics) is
 // tested separately below, since that's the part actually specific to
 // "attach to an existing session."
-import { assertEquals, assertRejects } from "jsr:@std/assert";
-import { chromium } from "npm:playwright";
+import { assertEquals, assertRejects } from "@std/assert";
+import { chromium } from "playwright";
 import {
   attachToLiveScene,
   collectConsoleMessages,
@@ -17,7 +17,8 @@ import {
   setProperty,
 } from "./live-scene.ts";
 
-const FIXTURE_PATH = new URL("./fixtures/fake-scene.html", import.meta.url).pathname;
+const FIXTURE_PATH =
+  new URL("./fixtures/fake-scene.html", import.meta.url).pathname;
 
 Deno.test("getSceneSummary reads objects from window.scene via traverse()", async () => {
   const browser = await chromium.launch();
@@ -25,11 +26,11 @@ Deno.test("getSceneSummary reads objects from window.scene via traverse()", asyn
   await page.goto(`file://${FIXTURE_PATH}`);
 
   const summary = await getSceneSummary(page);
-  const names = summary.map((o: any) => o.name);
+  const names = summary.map((o) => o.name);
   assertEquals(names.includes("TestLight"), true);
   assertEquals(names.includes("TestMesh"), true);
 
-  const mesh = summary.find((o: any) => o.name === "TestMesh") as any;
+  const mesh = summary.find((o) => o.name === "TestMesh")!;
   assertEquals(mesh.materialType, "MeshStandardMaterial");
 
   await browser.close();
@@ -90,7 +91,9 @@ Deno.test("collectConsoleMessages captures messages emitted after attachment", a
 
 Deno.test("attachToLiveScene connects to a real running browser and returns its page", async () => {
   const port = 19222; // fixed test port, distinct from the real 9222 default
-  const browser = await chromium.launch({ args: [`--remote-debugging-port=${port}`] });
+  const browser = await chromium.launch({
+    args: [`--remote-debugging-port=${port}`],
+  });
   const page = await browser.newPage();
   await page.goto(`file://${FIXTURE_PATH}`);
 
