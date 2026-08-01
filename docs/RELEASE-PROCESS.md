@@ -275,6 +275,3 @@ for real before it became everyone's default install.
 | npm dist-tag | `next` | `latest` (via `dist-tag add`, no republish) | `latest` (via fresh `publish`) |
 | Moves `parallax-threejs-stable`? | No | Yes | Yes |
 | Moves `parallax-threejs` (`"./"`)? | Always — it tracks `main`, regardless of mode | | |
-
-See `CONTRIBUTING.md`'s "Release modes" section for the short version of
-this same model.

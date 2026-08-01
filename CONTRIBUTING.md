@@ -85,10 +85,6 @@ next automated bump regardless.
 
 ### Release modes
 
-See `RELEASE-PROCESS.md` for a full worked walkthrough (every input,
-every resulting state, verification commands) — this section is just
-the summary.
-
 `release.yml`'s workflow dispatch has three modes, plus `bump_type`
 (how much the version number changes — ignored by `promote`, which
 reuses an existing number rather than computing a new one):

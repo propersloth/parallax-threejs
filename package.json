@@ -34,6 +34,7 @@
     "templates",
     ".mcp.json",
     "AGENTS.md",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "!docs/RELEASE-PROCESS.md"
   ]
 }
