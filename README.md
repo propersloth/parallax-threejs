@@ -71,6 +71,15 @@ working or a regression.
   debug scripts (`/checkpoint`, `/sweep`) to resolve anything — a
   widely-used three.js debugging convention, not something invented here,
   but not automatic either
+- For `/sync-view`: also expose `window.__THREE_CAMERA__ = camera`.
+  threejs-devtools-mcp's bridge only finds the camera two ways — this
+  global, or traversing the scene graph for the first object with
+  `.isCamera` set — and a camera that's never added as a scene child
+  (an ordinary, valid three.js pattern) is invisible to the traversal
+  fallback. Without this global, `/sync-view` fails with "No camera
+  found in scene" even though the scene and camera are both perfectly
+  valid (confirmed against threejs-devtools-mcp@0.2.1's actual bridge
+  source — UAT finding #10)
 - Node.js and Deno on your system PATH:
 
   ```bash
