@@ -65,9 +65,9 @@ Both lanes run exclusively on `runs-on: ubuntu-latest` — there's no CI
 coverage today proving either lane actually passes on Windows or macOS,
 even though `setup.ts`/the PowerShell scripts are written to support
 Windows. The maintainer doesn't have Windows hardware to test against
-directly. **If you have Windows hardware and want to help, running
-UAT-RUNBOOK.md against a real project and reporting back would be
-genuinely appreciated** — see the note at the top of that file. Adding
+directly. **If you have Windows hardware and want to help, open an
+issue and the maintainer will share the UAT runbook to run against a
+real project — reporting back would be genuinely appreciated.** Adding
 an actual Windows/macOS job to these workflows would also be a welcome
 PR, independent of a manual UAT run.
 

@@ -35,8 +35,8 @@ results before cutting the tag — see the UAT runbook.
   macOS/Linux-only; `setup.ts` dispatches by platform automatically.
   `setup-pi.sh` stays Linux-only by definition.
 - `/init` command + `templates/` — idempotent scaffolding for a real
-  project, replacing what was a manual multi-step copy (see
-  UAT-RUNBOOK.md Phase 2).
+  project, replacing what was a manual multi-step copy (see the
+  maintainer's local UAT runbook, Phase 2).
 - Core 1.0.0 feature set: four-evidence-channel correlated debugging
   (AGENTS.md §2); three subagents with distinct roles (`shader-reviewer`,
   `visual-debugger`, `scenario-author`); SHA-indexed visual regression
