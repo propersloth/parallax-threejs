@@ -45,6 +45,17 @@ jobs:
           if [ -f package.json ]; then
             jq --arg v "$NEW_VERSION" '.version = $v' package.json > tmp.json && mv tmp.json package.json
           fi
+          # Same for marketplace.json's own embedded parallax-threejs entry
+          # version -- `claude plugin validate --strict` (ci.yml's
+          # plugin-validate job) flags a mismatch here as a warning-treated-
+          # as-error. plugin.json wins at install time regardless (this
+          # field is cosmetic/informational only), but leaving it stale
+          # fails that check for no reason.
+          if [ -f .claude-plugin/marketplace.json ]; then
+            jq --arg v "$NEW_VERSION" \
+              '(.plugins[] | select(.name == "parallax-threejs") | .version) = $v' \
+              .claude-plugin/marketplace.json > tmp.json && mv tmp.json .claude-plugin/marketplace.json
+          fi
           echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Commit
@@ -53,5 +64,6 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .claude-plugin/plugin.json
           [ -f package.json ] && git add package.json
+          [ -f .claude-plugin/marketplace.json ] && git add .claude-plugin/marketplace.json
           git commit -m "chore: bump version to ${{ steps.bump.outputs.new_version }} [skip ci]"
           git push

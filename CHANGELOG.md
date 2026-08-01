@@ -74,6 +74,17 @@ results before cutting the tag — see the UAT runbook.
   default; general three.js/WebGL knowledge skills are optional, not
   vendored (see `docs/RECOMMENDED-SKILLS.md`).
 - `bump-patch.yml`'s Actions-tab display name shortened to "Auto-bump".
+- `release.yml`'s `npm publish` step (used by `next`/`direct-stable`) now
+  authenticates via npm Trusted Publishing (OIDC) instead of an
+  `NPM_TOKEN` secret — npm's own tightened 2FA-for-publishing policy made
+  a working CI token impractical (granular access tokens' "bypass 2FA"
+  option isn't reliably obtainable as of this writing). `promote`'s `npm
+  dist-tag add` step has no OIDC equivalent available (npm has no
+  timeline for it) and now degrades gracefully instead: it tries with
+  whatever token exists, and on failure prints the exact command to run
+  manually rather than blocking the rest of `promote` (which doesn't need
+  npm auth). See `docs/RELEASE-PROCESS.md`'s Safety Notes for the full
+  story.
 
 ### Removed
 - The custom dist zip attached to every GitHub Release — neither real
