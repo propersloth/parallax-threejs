@@ -30,36 +30,14 @@ Built for solo devs and hobbyists vibe-coding a real three.js/WebGL project with
 /plugin install parallax-threejs
 ```
 
-Prefer installing through npm? `/plugin install parallax-threejs-npm@propersloth` works too, same plugin, just updated via the npm registry instead. These are commands you type directly into a Claude Code session, not a URL to open in a browser.
-
-## Try it in 60 seconds
-
-Get your dev server running with `window.scene` exposed (see Prerequisites below; it's one line of code, not a big lift), then:
+Prefer installing through npm instead? Same marketplace, different plugin name:
 
 ```
-/checkpoint before
+/plugin marketplace add propersloth/parallax-threejs
+/plugin install parallax-threejs-npm@propersloth
 ```
 
-That's a snapshot of the scene graph, console, and a screenshot, bundled together as one labeled unit. Now go make the change you were going to make anyway. Then:
-
-```
-/diff before
-```
-
-Instead of squinting at two screenshots, you get a real report: what moved, what didn't, whether any new console errors showed up, and how big the visual difference is. You decide whether that's the fix working or a regression. Parallax never makes that call for you.
-
-## Your toolkit
-
-| Command | What it's actually for |
-|---|---|
-| `/checkpoint <label>` | Snapshot the scene graph, console, and a screenshot as one unit before you change anything. |
-| `/diff <label>` | Compare right now against that snapshot: pixel diff, console diff, scene-graph diff, one report. |
-| `/sweep <object> <property> <range>` | Render every value in a range at once as a contact sheet, instead of testing values one at a time. |
-| `/replay <scenario>` | Rerun a recorded interaction (hover, click, drag) exactly, instead of doing it by hand again. |
-| `/sync-view <name>` | Snap the camera to an exact, reusable framing so comparisons stay honest. |
-| `/init` | One-time setup: scaffolds the scripts above into your actual project. Run this first. |
-
-Behind these, three specialized subagents handle the heavier diagnostic work automatically: `shader-reviewer` catches shader bugs before they ever run, `visual-debugger` correlates all four evidence channels when something's actively wrong, and `scenario-author` turns a confirmed fix into permanent regression coverage. You generally won't call these by name; Claude reaches for the right one based on what you're doing.
+Same plugin either way, just updated via the npm registry instead of this git repo directly. Both of these are commands you type directly into a Claude Code session, not a URL to open in a browser.
 
 ## Prerequisites
 
@@ -79,13 +57,51 @@ Behind these, three specialized subagents handle the heavier diagnostic work aut
 
   Node.js: grab it from [nodejs.org](https://nodejs.org) or your platform's package manager (`brew install node`, `apt install nodejs`, the Windows installer). Needed for the `npx`-based tools regardless of OS.
 
+## Try it in 60 seconds
+
+First, one-time setup in your actual project (not this repo):
+
+```
+/init
+```
+
+This copies the debug scripts and the visual regression harness into your project. Nothing above works without it. Safe to run more than once. It only fills in what's missing and never overwrites your own edits.
+
+Now get your dev server running with `window.scene` exposed, and try:
+
+```
+/checkpoint before
+```
+
+That's a snapshot of the scene graph, console, and a screenshot, bundled together as one labeled unit. Now go make the change you were going to make anyway. Then:
+
+```
+/diff before
+```
+
+Instead of squinting at two screenshots, you get a real report: what moved, what didn't, whether any new console errors showed up, and how big the visual difference is. You decide whether that's the fix working or a regression. Parallax never makes that call for you.
+
+That's the whole minimum setup. Two optional add-ons worth knowing about once you're past it:
+
+- **[Recommended skills](docs/RECOMMENDED-SKILLS.md)**: general three.js/WebGL knowledge for Claude, on top of the debugging loop. Not bundled, genuinely optional.
+- **[Recommended dependencies](docs/RECOMMENDED-DEPENDENCIES.md)**: a curated pick of physics, animation, and postprocessing libraries, if your project needs any of that.
+
+## Your toolkit
+
+| Command | What it's actually for |
+|---|---|
+| `/init` | Run this first, once per project. Scaffolds everything below into your actual project. |
+| `/checkpoint <label>` | Snapshot the scene graph, console, and a screenshot as one unit before you change anything. |
+| `/diff <label>` | Compare right now against that snapshot: pixel diff, console diff, scene-graph diff, one report. |
+| `/sweep <object> <property> <range>` | Render every value in a range at once as a contact sheet, instead of testing values one at a time. |
+| `/replay <scenario>` | Rerun a recorded interaction (hover, click, drag) exactly, instead of doing it by hand again. |
+| `/sync-view <name>` | Snap the camera to an exact, reusable framing so comparisons stay honest. |
+
+Behind these, three specialized subagents handle the heavier diagnostic work automatically: `shader-reviewer` catches shader bugs before they ever run, `visual-debugger` correlates all four evidence channels when something's actively wrong, and `scenario-author` turns a confirmed fix into permanent regression coverage. You generally won't call these by name; Claude reaches for the right one based on what you're doing.
+
 ## What happens under the hood
 
-Installing the plugin wires up four browser/GPU inspection tools automatically (chrome-devtools-mcp, threejs-devtools-mcp, playwright-mcp, and Spector for raw GL state), so you don't configure any of this by hand. The one exception is Spector, which needs a one-time build step (`scripts/setup-spector.sh`) since it's cloned and compiled rather than installed like the others.
-
-Run `/init` once in your actual project to copy in the interactive scripts and the visual regression harness. It's idempotent, so running it again later only fills in anything new and never overwrites your own edits.
-
-Want general three.js/WebGL knowledge on top of the debugging loop? That's genuinely optional and not bundled. See `docs/RECOMMENDED-SKILLS.md` for a curated list, or bring whatever you already use.
+Installing the plugin wires up four browser/GPU inspection tools automatically (chrome-devtools-mcp, threejs-devtools-mcp, playwright-mcp, and Spector for raw GL state), so you don't configure any of this by hand. The one exception is Spector, which needs a one-time build step (`scripts/setup-spector.sh`) if you want raw GL-state debugging specifically, since it's cloned and compiled rather than installed like the others. Skip it until you actually need it.
 
 ## When something's not working
 
