@@ -19,6 +19,15 @@
         "package": "@propersloth/parallax-threejs"
       },
       "description": "Same plugin as parallax-threejs, distributed via npm instead of this git repo directly — pick this one if you'd rather install/update through the npm registry. Not usable for organization-wide distribution via Admin Settings (npm sources aren't supported there; use parallax-threejs for that). No version pinned here deliberately — the published package's own .claude-plugin/plugin.json version is authoritative and takes priority in Claude Code's resolution order, so pinning a second copy here would just be one more place for the two to silently drift apart. Resolves to whatever `npm view @propersloth/parallax-threejs dist-tags.latest` returns."
+    },
+    {
+      "name": "parallax-threejs-stable",
+      "source": {
+        "source": "github",
+        "repo": "propersloth/parallax-threejs",
+        "ref": "v0.3.27"
+      },
+      "description": "Same plugin as parallax-threejs, pinned to the last deliberately-cut stable release instead of tracking main live — pick this if you want updates only when a stable version is manually released, not on every merge."
     }
   ]
 }
