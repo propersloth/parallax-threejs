@@ -7,7 +7,7 @@
 // fixture. attachToLiveScene() itself (the CDP-connection mechanics) is
 // tested separately below, since that's the part actually specific to
 // "attach to an existing session."
-import { assertEquals, assertMatch, assertRejects } from "@std/assert";
+import { assertEquals, assertRejects } from "@std/assert";
 import { chromium } from "playwright";
 import {
   attachToLiveScene,
@@ -141,33 +141,36 @@ Deno.test("isCdpReachable returns false when nothing is listening", async () => 
 // namespaces, so Chrome's own sandbox can't start at all — confirmed via
 // an actual Extended Tests run, not hypothetical) depends entirely on
 // spawnAndAwaitReady correctly reporting an early exit plus its stderr.
-// That's exercised directly here against a fake executable, rather than
-// needing an actually-sandbox-restricted environment to reproduce.
+// That's exercised directly here against a fake "executable" — the
+// currently-running `deno` binary itself, invoked with Chrome-shaped
+// flags it doesn't understand — rather than a POSIX shell script, which
+// doesn't run on Windows at all (no shebang interpretation, no exec
+// bit). Deno.execPath() is guaranteed present and directly executable on
+// every platform Deno itself runs on, and reliably fails fast with a
+// nonzero exit and a real stderr message on an unrecognized flag —
+// exactly the "process died immediately, capture why" shape this is
+// testing, without depending on any specific error text (which would
+// tie this to deno's own CLI wording, not what's actually under test).
 Deno.test("spawnAndAwaitReady reports the exit code and stderr when the process dies immediately", async () => {
   const port = "19233";
-  const fakeChrome = await Deno.makeTempFile({ suffix: ".sh" });
-  await Deno.writeTextFile(
-    fakeChrome,
-    `#!/bin/sh\necho "No usable sandbox! (fake, for testing)" 1>&2\nexit 133\n`,
-  );
-  await Deno.chmod(fakeChrome, 0o755);
+  const tempDir = await Deno.makeTempDir();
 
   try {
     const result = await spawnAndAwaitReady(
-      fakeChrome,
+      Deno.execPath(),
       port,
       "1",
-      "/tmp",
+      tempDir,
       false,
       [],
     );
     assertEquals(result.outcome, "exited");
     if (result.outcome === "exited") {
-      assertEquals(result.code, 133);
-      assertMatch(result.stderrText, /No usable sandbox/);
+      assertEquals(result.code !== 0, true);
+      assertEquals(result.stderrText.trim() !== "", true);
     }
   } finally {
-    await Deno.remove(fakeChrome).catch(() => {});
+    await Deno.remove(tempDir, { recursive: true }).catch(() => {});
   }
 });
 
