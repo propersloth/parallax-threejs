@@ -7,7 +7,7 @@
 // fixture. attachToLiveScene() itself (the CDP-connection mechanics) is
 // tested separately below, since that's the part actually specific to
 // "attach to an existing session."
-import { assertEquals, assertRejects } from "@std/assert";
+import { assertEquals, assertMatch, assertRejects } from "@std/assert";
 import { chromium } from "playwright";
 import {
   attachToLiveScene,
@@ -16,6 +16,7 @@ import {
   getSceneSummary,
   isCdpReachable,
   setProperty,
+  spawnAndAwaitReady,
 } from "./live-scene.ts";
 
 const FIXTURE_PATH =
@@ -135,6 +136,41 @@ Deno.test("isCdpReachable returns false when nothing is listening", async () => 
   assertEquals(await isCdpReachable("19232"), false);
 });
 
+// launchPersistentChromium's sandbox-failure retry (real-world trigger:
+// GitHub Actions' ubuntu-latest runners restrict unprivileged user
+// namespaces, so Chrome's own sandbox can't start at all — confirmed via
+// an actual Extended Tests run, not hypothetical) depends entirely on
+// spawnAndAwaitReady correctly reporting an early exit plus its stderr.
+// That's exercised directly here against a fake executable, rather than
+// needing an actually-sandbox-restricted environment to reproduce.
+Deno.test("spawnAndAwaitReady reports the exit code and stderr when the process dies immediately", async () => {
+  const port = "19233";
+  const fakeChrome = await Deno.makeTempFile({ suffix: ".sh" });
+  await Deno.writeTextFile(
+    fakeChrome,
+    `#!/bin/sh\necho "No usable sandbox! (fake, for testing)" 1>&2\nexit 133\n`,
+  );
+  await Deno.chmod(fakeChrome, 0o755);
+
+  try {
+    const result = await spawnAndAwaitReady(
+      fakeChrome,
+      port,
+      "1",
+      "/tmp",
+      false,
+      [],
+    );
+    assertEquals(result.outcome, "exited");
+    if (result.outcome === "exited") {
+      assertEquals(result.code, 133);
+      assertMatch(result.stderrText, /No usable sandbox/);
+    }
+  } finally {
+    await Deno.remove(fakeChrome).catch(() => {});
+  }
+});
+
 Deno.test("attachToLiveScene connects to a real running browser and returns its page", async () => {
   const port = 19222; // fixed test port, distinct from the real 9223 default
   const browser = await chromium.launch({
@@ -158,6 +194,12 @@ Deno.test("attachToLiveScene launches its own persistent Chromium when nothing i
 
   Deno.env.set("BRIDGE_PORT", String(port));
   Deno.env.set("DEV_PORT", "1"); // nothing needs to actually be there for this test
+  // This test is verifying the launch *mechanism* (port detection, spawn,
+  // CDP attach, reuse), not visual rendering, so it shouldn't depend on
+  // the environment actually having a display — CI runners (confirmed via
+  // an actual Extended Tests run) don't. Real end users still get headed
+  // by default; this only affects this test's own invocation.
+  Deno.env.set("PARALLAX_HEADLESS", "true");
   Deno.chdir(tempCwd);
 
   try {
@@ -195,5 +237,6 @@ Deno.test("attachToLiveScene launches its own persistent Chromium when nothing i
     await Deno.remove(tempCwd, { recursive: true }).catch(() => {});
     Deno.env.delete("BRIDGE_PORT");
     Deno.env.delete("DEV_PORT");
+    Deno.env.delete("PARALLAX_HEADLESS");
   }
 });

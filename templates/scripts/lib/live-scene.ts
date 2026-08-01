@@ -200,58 +200,114 @@ async function launchPersistentChromium(
     const userDataDir = `${Deno.cwd()}/.parallax/chrome-profile`;
     const headless = Deno.env.get("PARALLAX_HEADLESS") === "true";
 
-    const command = new Deno.Command(executablePath, {
-      args: [
-        `--remote-debugging-port=${port}`,
-        ...(headless ? ["--headless=new"] : []),
-        ...STABILITY_ARGS,
-        "--no-first-run",
-        "--no-default-browser-check",
-        `--user-data-dir=${userDataDir}`,
-        `http://localhost:${devPort}`,
-      ],
-      stdin: "null",
-      stdout: "null",
-      // Piped, not "null" — read to diagnose an early crash (missing
-      // shared libs, sandbox failure, no display with PARALLAX_HEADLESS
-      // unset, etc.), which is otherwise invisible: the caller just burns
-      // the full waitForCdpReady timeout with no indication anything died.
-      // Verified separately that a piped-then-canceled stderr doesn't harm
-      // this process once it's confirmed healthy and detached
-      // (child.unref() below) — only the "exited" branch actually reads
-      // it to completion, which is safe precisely because the process is
-      // already gone by then.
-      stderr: "piped",
-    });
-    const child = command.spawn();
-    child.unref();
+    let result = await spawnAndAwaitReady(
+      executablePath,
+      port,
+      devPort,
+      userDataDir,
+      headless,
+      [],
+    );
 
-    const exited = child.status.then((status) => ({
-      outcome: "exited" as const,
-      status,
-    }));
-    const ready = waitForCdpReady(port).then(() => ({
-      outcome: "ready" as const,
-    }));
-    const result = await Promise.race([ready, exited]);
-
-    if (result.outcome === "exited") {
-      const stderrText = await new Response(child.stderr).text().catch(() =>
-        ""
-      );
-      throw new Error(
-        `Parallax's Chromium exited immediately (code ${result.status.code}) ` +
-          `instead of opening a CDP port at :${port}.` +
-          (stderrText.trim() ? ` stderr: ${stderrText.trim()}` : ""),
+    // Sandboxed containers without unprivileged user namespaces (GitHub
+    // Actions' ubuntu-latest runners, many Docker setups, some locked-down
+    // Pi configs) can't start Chrome's own sandbox at all — confirmed by
+    // matching the exact failure Chrome itself reports, not guessed.
+    // Retrying once with --no-sandbox (Chrome's own crash message suggests
+    // this exact workaround) is acceptable here specifically because this
+    // browser only ever loads the user's own local dev server — trusted
+    // first-party content, not arbitrary web pages — a materially smaller
+    // threat model than a general-purpose browser, so it isn't the default,
+    // only a fallback for environments that have already proven they need it.
+    if (
+      result.outcome === "exited" && /No usable sandbox/.test(result.stderrText)
+    ) {
+      result = await spawnAndAwaitReady(
+        executablePath,
+        port,
+        devPort,
+        userDataDir,
+        headless,
+        ["--no-sandbox"],
       );
     }
 
-    // Still running — stop holding the pipe open rather than leaving it
-    // dangling for a process meant to outlive this script.
-    await child.stderr.cancel().catch(() => {});
+    if (result.outcome === "exited") {
+      throw new Error(
+        `Parallax's Chromium exited immediately (code ${result.code}) ` +
+          `instead of opening a CDP port at :${port}.` +
+          (result.stderrText.trim()
+            ? ` stderr: ${result.stderrText.trim()}`
+            : ""),
+      );
+    }
   } finally {
     await Deno.remove(lockPath).catch(() => {});
   }
+}
+
+type SpawnResult =
+  | { outcome: "ready" }
+  | { outcome: "exited"; code: number; stderrText: string };
+
+// Exported for direct unit testing of the sandbox-failure retry mechanism
+// in launchPersistentChromium — same reasoning as isCdpReachable above:
+// the real case (a genuinely sandbox-restricted environment) isn't
+// reproducible in every test environment, but the mechanism itself
+// (spawn, detect exit vs. ready, report stderr) is testable directly
+// against a fake executable.
+export async function spawnAndAwaitReady(
+  executablePath: string,
+  port: string,
+  devPort: string,
+  userDataDir: string,
+  headless: boolean,
+  extraArgs: string[],
+): Promise<SpawnResult> {
+  const command = new Deno.Command(executablePath, {
+    args: [
+      `--remote-debugging-port=${port}`,
+      ...(headless ? ["--headless=new"] : []),
+      ...STABILITY_ARGS,
+      ...extraArgs,
+      "--no-first-run",
+      "--no-default-browser-check",
+      `--user-data-dir=${userDataDir}`,
+      `http://localhost:${devPort}`,
+    ],
+    stdin: "null",
+    stdout: "null",
+    // Piped, not "null" — read to diagnose an early crash (missing shared
+    // libs, sandbox failure, no display with PARALLAX_HEADLESS unset,
+    // etc.), which is otherwise invisible: the caller just burns the full
+    // waitForCdpReady timeout with no indication anything died. Verified
+    // separately that a piped-then-canceled stderr doesn't harm this
+    // process once it's confirmed healthy and detached (child.unref()
+    // below) — only the "exited" branch actually reads it to completion,
+    // which is safe precisely because the process is already gone by then.
+    stderr: "piped",
+  });
+  const child = command.spawn();
+  child.unref();
+
+  const exited = child.status.then((status) => ({
+    outcome: "exited" as const,
+    status,
+  }));
+  const ready = waitForCdpReady(port).then(() => ({
+    outcome: "ready" as const,
+  }));
+  const result = await Promise.race([ready, exited]);
+
+  if (result.outcome === "exited") {
+    const stderrText = await new Response(child.stderr).text().catch(() => "");
+    return { outcome: "exited", code: result.status.code, stderrText };
+  }
+
+  // Still running — stop holding the pipe open rather than leaving it
+  // dangling for a process meant to outlive this script.
+  await child.stderr.cancel().catch(() => {});
+  return { outcome: "ready" };
 }
 
 export async function attachToLiveScene(): Promise<
