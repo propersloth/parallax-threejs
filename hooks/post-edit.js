@@ -30,7 +30,11 @@ process.stdin.on("end", async () => {
   }
 
   const fs = require("fs");
-  const root = process.env.CLAUDE_PLUGIN_ROOT || ".";
+  // Project root, not the plugin's own installed/dev directory — CLAUDE_PLUGIN_ROOT
+  // is a shared, version-pinned cache path that every project using the plugin
+  // would collide on (UAT finding #12). The hook event carries `cwd` for this
+  // reason; process.cwd() is a fallback for older event payloads without it.
+  const root = event?.cwd || process.cwd();
   const dir = `${root}/.parallax`;
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(

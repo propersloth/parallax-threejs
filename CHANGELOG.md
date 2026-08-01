@@ -57,25 +57,22 @@ results before cutting the tag — see the UAT runbook.
 ### Known limitations at time of writing
 - Real-hardware UAT (2026-07-31, Raspberry Pi 5, against `ceres`, a real
   npm-based three.js prototype) found 13 findings, 4 fixed live during
-  the run and 9 still open — see UAT-RUNBOOK.md's Sign-off section for
+  the run; 2 more (#8, #12) fixed post-run, 7 still open — see
+  UAT-RUNBOOK.md's Sign-off section and
+  `aidlc-docs/construction/build-and-test/uat-release-blockers.md` for
   full detail. Highest-severity open findings, all needing real code
   fixes before 1.0.0:
   - `/checkpoint`, `/sweep`, `/replay`, `/diff-checkpoints` cannot
     attach to the browser at all — `live-scene.ts`'s Playwright
     `connectOverCDP` assumption doesn't match how `chrome-devtools-mcp`
     actually launches Chrome (`--remote-debugging-pipe`, no CDP TCP
-    port). Missing `--allow-sys` in `deno-tasks.json` fails these even
-    earlier, before reaching that issue.
+    port).
   - The visual regression suite (`deno task visual:run`) is broken for
     any target project that already has its own `node_modules/` (i.e.
     most real npm-based three.js projects, `ceres` included) — Deno
     routes its `npm:pixelmatch`/`npm:pngjs` imports through that local
     `node_modules/` instead of Deno's own cache, and neither package is
     there.
-  - `hooks/post-edit.js` writes `.parallax/pending-checkpoint` under
-    `${CLAUDE_PLUGIN_ROOT}` instead of the project actually being
-    edited — confirmed live, would collide across every project sharing
-    a normal (non-local-dev) plugin install.
   - `check-shader-bindings.ts` produced a 28/28 false-positive rate on
     its first real-world run — it doesn't recognize the
     `onBeforeCompile` + `shader.uniforms.X = ...` binding idiom, only
