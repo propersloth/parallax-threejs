@@ -83,6 +83,45 @@ PR, independent of a manual UAT run.
 Don't hand-edit the `version` field in a PR — it gets overwritten by the
 next automated bump regardless.
 
+### Release modes
+
+`release.yml`'s workflow dispatch has three modes, plus `bump_type`
+(how much the version number changes — ignored by `promote`, which
+reuses an existing number rather than computing a new one):
+
+- **`next`** — cut a fresh pre-release: bump, build, test, tag, publish
+  to npm under the `next` dist-tag, GitHub Release marked `--prerelease`.
+- **`direct-stable`** — cut a fresh *stable* release with no prior
+  pre-release cycle: same as `next` but publishes under `latest` and the
+  release isn't marked prerelease. For changes small/low-risk enough
+  that a testing cycle isn't warranted.
+- **`promote`** — take an *already-published* `next` release (name it
+  via the `promote_version` input) and relabel it stable, without
+  rebuilding: `npm dist-tag add` moves the `latest` pointer to that exact
+  version (no new tarball, no new version number), the stable-pinned
+  marketplace entry's `ref` moves to the *same* existing git tag (no new
+  tag), and the existing GitHub Release has its prerelease flag cleared
+  (no new release created).
+
+`promote` is the standard release-engineering pattern for this
+situation — build a given commit's bits exactly once, test that exact
+artifact under `next`, and if it's good, relabel it rather than
+rebuilding. `direct-stable`/`next` both produce plain `X.Y.Z` version
+numbers (no `1.0.0-rc.1`-style suffixes) — that's fine specifically
+*because* `promote` never republishes, so the version-number collision
+this would otherwise risk (testing `1.0.0` under `next`, then being
+unable to publish `1.0.0` as `direct-stable` — npm refuses to publish
+the same number twice) doesn't apply to `promote`. It does still apply
+if you skip `promote` and try to `direct-stable` the exact number you
+already tested under `next`; use `promote` for that case instead.
+
+The `parallax-threejs` marketplace entry (`"./"`) always tracks `main`
+live regardless of mode — there's no way to pin a same-repo source to a
+specific ref, so it isn't a "stable" channel in any real sense, just the
+rolling one. `parallax-threejs-stable` (a separate, explicit
+`github`-sourced entry) is what actually stays put between releases,
+moved only by `direct-stable` or `promote`.
+
 ## Skill content
 
 Only `skills/qa-visual-test-harness/SKILL.md` ships by default — it

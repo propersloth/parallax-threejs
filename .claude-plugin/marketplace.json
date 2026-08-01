@@ -10,6 +10,14 @@
       "name": "parallax-threejs",
       "source": "./",
       "description": "Three.js/GLSL debugging for Claude Code — correlates scene graph, console, GL state, and pixels into one diagnosis. Plus SHA-indexed visual regression testing."
+    },
+    {
+      "name": "parallax-threejs-npm",
+      "source": {
+        "source": "npm",
+        "package": "@propersloth/parallax-threejs"
+      },
+      "description": "Same plugin as parallax-threejs, distributed via npm instead of this git repo directly — pick this one if you'd rather install/update through the npm registry. Not usable for organization-wide distribution via Admin Settings (npm sources aren't supported there; use parallax-threejs for that). No version pinned here deliberately — the published package's own .claude-plugin/plugin.json version is authoritative and takes priority in Claude Code's resolution order, so pinning a second copy here would just be one more place for the two to silently drift apart."
     }
   ]
 }
