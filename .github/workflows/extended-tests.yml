@@ -32,4 +32,9 @@ jobs:
       - name: Install Playwright browsers
         run: deno run -A npm:playwright install chromium --with-deps
       - name: Run Lane 2 tests
-        run: deno test --allow-net --allow-read --allow-write --allow-env --allow-run templates/test/visual/lib/capture_test.ts templates/scripts/lib/live-scene_test.ts
+        # --allow-all, not a scoped flag: playwright-core's internal
+        # isWsl() check does existsSync() on /proc/sys/fs/binfmt_misc/...,
+        # which Deno only satisfies via unscoped --allow-all regardless of
+        # how --allow-read is scoped. That's inside the vendored
+        # playwright-core package, not something we control.
+        run: deno test --allow-all templates/test/visual/lib/capture_test.ts templates/scripts/lib/live-scene_test.ts
