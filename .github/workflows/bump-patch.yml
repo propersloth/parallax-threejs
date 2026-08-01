@@ -17,6 +17,7 @@ name: Auto-bump patch version
 on:
   push:
     branches: [main]
+  workflow_dispatch: {}
 
 permissions:
   contents: write
@@ -26,6 +27,13 @@ jobs:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
+      # TEMPORARY diagnostic — remove once BUMP_PAT resolution is confirmed
+      # working. Prints only the secret's length, never its value.
+      - name: Debug secret length
+        env:
+          BUMP_PAT: ${{ secrets.BUMP_PAT }}
+        run: echo "BUMP_PAT length: ${#BUMP_PAT}"
+
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
