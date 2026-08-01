@@ -92,6 +92,75 @@ async function waitForCdpReady(port: string, timeoutMs = 30000): Promise<void> {
   );
 }
 
+// Empirically captured from Playwright's own chromium.launch() (inspected
+// the resulting process's actual command line) rather than guessed —
+// launching the raw binary directly means Playwright's substantial
+// internal default-args list is skipped unless reproduced here. Excludes
+// anything headless-only, security-relevant (e.g. --no-sandbox), or that
+// would hide the window (e.g. --no-startup-window) — those stay Chrome's
+// own OS-appropriate default since this tab is meant to be headed and
+// visible. --disable-dev-shm-usage is the single biggest win of this
+// list on constrained/containerized targets (Raspberry Pi, Docker):
+// Chrome's default /dev/shm size assumption crashes it otherwise.
+const STABILITY_ARGS = [
+  "--disable-field-trial-config",
+  "--disable-background-networking",
+  "--disable-background-timer-throttling",
+  "--disable-backgrounding-occluded-windows",
+  "--disable-back-forward-cache",
+  "--disable-breakpad",
+  "--disable-client-side-phishing-detection",
+  "--disable-component-extensions-with-background-pages",
+  "--disable-component-update",
+  "--disable-default-apps",
+  "--disable-dev-shm-usage",
+  "--disable-extensions",
+  "--disable-hang-monitor",
+  "--disable-ipc-flooding-protection",
+  "--disable-popup-blocking",
+  "--disable-prompt-on-repost",
+  "--disable-renderer-backgrounding",
+  "--disable-updater-scheduler",
+  "--force-color-profile=srgb",
+  "--metrics-recording-only",
+  "--password-store=basic",
+  "--use-mock-keychain",
+  "--no-service-autorun",
+  "--disable-search-engine-choice-screen",
+  "--disable-infobars",
+  "--disable-sync",
+];
+
+// Longer than waitForCdpReady's own 30s budget — if a lock is still
+// there after this long, whatever created it plausibly crashed instead
+// of finishing, so it's treated as stale rather than blocked on forever.
+const LOCK_STALE_MS = 45000;
+
+// Guards against two interactive commands invoked in close succession
+// both observing isCdpReachable() === false and both trying to spawn
+// Chrome onto the same port/profile dir. A real, atomic, cross-process
+// mutex — Deno processes don't share memory, so this has to be a
+// filesystem lock, not an in-process one.
+async function acquireLaunchLock(lockPath: string): Promise<boolean> {
+  try {
+    const file = await Deno.open(lockPath, { createNew: true, write: true });
+    file.close();
+    return true;
+  } catch (err) {
+    if (!(err instanceof Deno.errors.AlreadyExists)) throw err;
+  }
+  try {
+    const info = await Deno.stat(lockPath);
+    if (info.mtime && Date.now() - info.mtime.getTime() > LOCK_STALE_MS) {
+      await Deno.remove(lockPath).catch(() => {});
+      return await acquireLaunchLock(lockPath);
+    }
+  } catch {
+    // Lock disappeared between our check and now — fine, treat as not ours.
+  }
+  return false;
+}
+
 // Spawned as a raw OS process (not via chromium.launch()) and explicitly
 // detached — Playwright's own launch() keeps a handle open that blocks
 // the calling Deno process from exiting, and kills the browser on that
@@ -101,54 +170,88 @@ async function launchPersistentChromium(
   devPort: string,
 ): Promise<void> {
   const executablePath = chromium.executablePath();
-  const userDataDir = `${Deno.cwd()}/.parallax/chrome-profile`;
-  const headless = Deno.env.get("PARALLAX_HEADLESS") === "true";
-
-  const command = new Deno.Command(executablePath, {
-    args: [
-      `--remote-debugging-port=${port}`,
-      ...(headless ? ["--headless=new"] : []),
-      "--no-first-run",
-      "--no-default-browser-check",
-      `--user-data-dir=${userDataDir}`,
-      `http://localhost:${devPort}`,
-    ],
-    stdin: "null",
-    stdout: "null",
-    // Piped, not "null" — read to diagnose an early crash (missing
-    // shared libs, sandbox failure, no display with PARALLAX_HEADLESS
-    // unset, etc.), which is otherwise invisible: the caller just burns
-    // the full waitForCdpReady timeout with no indication anything died.
-    // Verified separately that a piped-then-canceled stderr doesn't harm
-    // this process once it's confirmed healthy and detached (child.unref()
-    // below) — only the "exited" branch actually reads it to completion,
-    // which is safe precisely because the process is already gone by then.
-    stderr: "piped",
-  });
-  const child = command.spawn();
-  child.unref();
-
-  const exited = child.status.then((status) => ({
-    outcome: "exited" as const,
-    status,
-  }));
-  const ready = waitForCdpReady(port).then(() => ({
-    outcome: "ready" as const,
-  }));
-  const result = await Promise.race([ready, exited]);
-
-  if (result.outcome === "exited") {
-    const stderrText = await new Response(child.stderr).text().catch(() => "");
+  try {
+    await Deno.stat(executablePath);
+  } catch {
     throw new Error(
-      `Parallax's Chromium exited immediately (code ${result.status.code}) ` +
-        `instead of opening a CDP port at :${port}.` +
-        (stderrText.trim() ? ` stderr: ${stderrText.trim()}` : ""),
+      `Playwright's Chromium isn't installed (expected at ` +
+        `${executablePath}). Run \`deno run -A npm:playwright install ` +
+        `chromium\` once, then retry.`,
     );
   }
 
-  // Still running — stop holding the pipe open rather than leaving it
-  // dangling for a process meant to outlive this script.
-  await child.stderr.cancel().catch(() => {});
+  const parallaxDir = `${Deno.cwd()}/.parallax`;
+  await Deno.mkdir(parallaxDir, { recursive: true });
+  const lockPath = `${parallaxDir}/chrome-launch.lock`;
+
+  if (!(await acquireLaunchLock(lockPath))) {
+    // Someone else is already launching — wait for them rather than
+    // racing a second Chrome onto the same port/profile dir.
+    await waitForCdpReady(port);
+    return;
+  }
+
+  try {
+    // Re-check now that the lock is ours: another invocation may have
+    // finished launching between attachToLiveScene()'s first check and
+    // this one.
+    if (await isCdpReachable(port)) return;
+
+    const userDataDir = `${Deno.cwd()}/.parallax/chrome-profile`;
+    const headless = Deno.env.get("PARALLAX_HEADLESS") === "true";
+
+    const command = new Deno.Command(executablePath, {
+      args: [
+        `--remote-debugging-port=${port}`,
+        ...(headless ? ["--headless=new"] : []),
+        ...STABILITY_ARGS,
+        "--no-first-run",
+        "--no-default-browser-check",
+        `--user-data-dir=${userDataDir}`,
+        `http://localhost:${devPort}`,
+      ],
+      stdin: "null",
+      stdout: "null",
+      // Piped, not "null" — read to diagnose an early crash (missing
+      // shared libs, sandbox failure, no display with PARALLAX_HEADLESS
+      // unset, etc.), which is otherwise invisible: the caller just burns
+      // the full waitForCdpReady timeout with no indication anything died.
+      // Verified separately that a piped-then-canceled stderr doesn't harm
+      // this process once it's confirmed healthy and detached
+      // (child.unref() below) — only the "exited" branch actually reads
+      // it to completion, which is safe precisely because the process is
+      // already gone by then.
+      stderr: "piped",
+    });
+    const child = command.spawn();
+    child.unref();
+
+    const exited = child.status.then((status) => ({
+      outcome: "exited" as const,
+      status,
+    }));
+    const ready = waitForCdpReady(port).then(() => ({
+      outcome: "ready" as const,
+    }));
+    const result = await Promise.race([ready, exited]);
+
+    if (result.outcome === "exited") {
+      const stderrText = await new Response(child.stderr).text().catch(() =>
+        ""
+      );
+      throw new Error(
+        `Parallax's Chromium exited immediately (code ${result.status.code}) ` +
+          `instead of opening a CDP port at :${port}.` +
+          (stderrText.trim() ? ` stderr: ${stderrText.trim()}` : ""),
+      );
+    }
+
+    // Still running — stop holding the pipe open rather than leaving it
+    // dangling for a process meant to outlive this script.
+    await child.stderr.cancel().catch(() => {});
+  } finally {
+    await Deno.remove(lockPath).catch(() => {});
+  }
 }
 
 export async function attachToLiveScene(): Promise<
