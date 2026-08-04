@@ -32,7 +32,7 @@ jobs:
       - name: Cache Deno dependencies
         # See ci.yml's identical step — deno.json pulls real npm packages,
         # and denoland/setup-deno has no built-in cache flag.
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/deno
           key: ${{ runner.os }}-deno-${{ hashFiles('deno.lock') }}
@@ -40,7 +40,7 @@ jobs:
             ${{ runner.os }}-deno-
       - name: Cache Playwright browsers
         id: playwright-cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('deno.lock') }}
