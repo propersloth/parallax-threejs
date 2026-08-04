@@ -23,6 +23,6 @@ echo "== config syntax (JSON/YAML) =="
 deno run --allow-read scripts/validate-config-syntax.ts
 
 echo "== deno test (Lane 1) =="
-deno test --allow-run=git --allow-read --allow-write --ignore=templates/test/visual/lib/capture_test.ts,templates/scripts/lib/live-scene_test.ts scripts/ hooks/ templates/
+deno test --allow-run=git --allow-read --allow-write --ignore=templates/test/visual/lib/capture_test.ts,templates/scripts/lib/live-scene_test.ts,templates/lib/renderer-info_test.ts templates/ scripts/ hooks/
 
 echo "Pre-commit checks passed."

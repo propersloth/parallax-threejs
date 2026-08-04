@@ -14,7 +14,7 @@ That loop isn't your fault. A screenshot is the least informative thing you can 
 ## The stuff you didn't know you were missing
 
 - **"Why is this thing invisible?"** Claude checks the scene graph (materials, transforms, shader compile status), the console (a silently failed texture load, maybe), and the pixels together, then tells you which one actually explains it.
-- **"I tweaked one thing and now I'm scared something else broke without me noticing."** Run `/checkpoint` before and `/diff` after. You get a pixel diff, a console diff, and a scene-graph diff, instead of two browser tabs and your own eyeballs.
+- **"I tweaked one thing and now I'm scared something else broke without me noticing."** Run `/checkpoint` before and `/diff` after. You get a pixel diff, a console diff, and a scene-graph diff — plus, if you've exposed `window.__renderer__`, a memory and perf (draw-call/triangle) delta too — instead of two browser tabs and your own eyeballs.
 - **"I'm doing the '0.6... okay, 0.7...' dance with a light color or intensity."** `/sweep` renders the whole range at once as a contact sheet, so you see every option side by side instead of bisecting by hand one slow reload at a time.
 - **"I keep manually re-doing the same click-hover-drag just to check something."** `/replay` records the interaction once and reruns it exactly every time, so you're not left wondering if you hovered the same spot as last time.
 - **"Two screenshots look different and I can't tell if that's the bug or the camera drifted."** `/sync-view` pins the camera to an exact, named framing, so a comparison is finally comparing the same shot.
