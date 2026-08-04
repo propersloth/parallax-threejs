@@ -224,6 +224,14 @@ investigation is needed, that's a signal to revisit the browser-location
 decision (running the browser on a separate, more capable machine instead)
 rather than trusting Pi-local numbers.
 
+Not covered by this caveat: `/checkpoint`/`/diff`'s `perf` field (draw
+calls, triangles, points, lines, from `renderer.info.render`) is a CPU-side
+submission *count* for the frame, not a rate or a timing measurement — it
+doesn't depend on how fast the GPU actually executed anything, so it's
+trustworthy on Pi the same way the `memory` field's geometry/texture counts
+already are. It's specifically FPS/frame-timing/rates that are suspect here,
+not counts.
+
 ---
 
 ## 7. Human-side-only tools (not agent-accessible)

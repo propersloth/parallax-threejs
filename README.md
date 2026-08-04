@@ -45,7 +45,7 @@ Same plugin either way, just updated via the npm registry instead of this git re
 - **A vanilla three.js project.** No React Three Fiber. See the opening of `AGENTS.md` if you're curious why the scope stays this narrow on purpose.
 - **Your scene needs to be reachable.** Add `window.scene = scene` somewhere in your setup code. This is how the debug tools find anything at all. It's a common three.js debugging convention, not something Parallax invented, but it won't happen on its own.
 - **For `/sync-view` specifically**, also expose `window.__THREE_CAMERA__ = camera`. Without it, camera discovery falls back to scanning the scene graph for the first object with `.isCamera` set, which misses a camera that's constructed but never added as a scene child (an ordinary, valid pattern). If `/sync-view` says "No camera found" even though your scene is fine, this is almost always why.
-- **For a memory/dispose snapshot in `/checkpoint`, `/diff`, and the regression suite's optional `memoryThreshold` check**, also expose `window.__renderer__ = renderer`. This one's optional — everything else works exactly the same without it, the memory field is just omitted.
+- **For a memory/dispose snapshot in `/checkpoint`, `/diff`, and the regression suite's optional `memoryThreshold` check, plus a draw-call/triangle/point/line perf snapshot in `/checkpoint`/`/diff`**, also expose `window.__renderer__ = renderer`. This one's optional — everything else works exactly the same without it, both fields are just omitted.
 - **Node.js and Deno**, both on your system `PATH`:
 
   ```bash

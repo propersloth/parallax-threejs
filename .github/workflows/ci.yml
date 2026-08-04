@@ -55,10 +55,10 @@ jobs:
             ${{ runner.os }}-deno-
       - name: Run unit tests
         # templates/ must be listed first: with it after scripts/ or hooks/,
-        # deno test's --ignore glob silently fails to match the two excluded
+        # deno test's --ignore glob silently fails to match the three excluded
         # files under templates/, and the Playwright-importing test module
         # gets loaded anyway (uncaught NotCapable error, no --allow-env).
-        run: deno test --allow-run=git --allow-read --allow-write --ignore=templates/test/visual/lib/capture_test.ts,templates/scripts/lib/live-scene_test.ts templates/ scripts/ hooks/
+        run: deno test --allow-run=git --allow-read --allow-write --ignore=templates/test/visual/lib/capture_test.ts,templates/scripts/lib/live-scene_test.ts,templates/lib/renderer-info_test.ts templates/ scripts/ hooks/
 
   typecheck:
     runs-on: ubuntu-latest

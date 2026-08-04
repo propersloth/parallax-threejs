@@ -30,6 +30,19 @@ results before cutting the tag — see the UAT runbook.
   is reserved and rejected outright if a scenario tries to reuse it. See
   `aidlc-docs/inception/`/`aidlc-docs/construction/unit-1-memcheck-routing/`
   for the full design record.
+- `/checkpoint`/`/diff` gain an optional perf snapshot/delta (draw calls,
+  triangles, points, lines, from `WebGLRenderer.info.render`) alongside
+  the memory field Unit 1 added — same `window.__renderer__` opt-in, same
+  graceful-absence handling for checkpoints that predate this. These are
+  CPU-side submission *counts*, not a timing/rate measurement, so
+  AGENTS.md §7a's Raspberry Pi caveat (which is specifically about
+  FPS/frame-timing being unreliable there) does not apply to them.
+  `templates/lib/renderer-memory.ts` (Unit 1) is renamed
+  `templates/lib/renderer-info.ts` to reflect covering `WebGLRenderer.info`
+  more broadly now — a template-repo-only rename, `/init` never
+  overwrites so no existing scaffolded project is affected. See
+  `aidlc-docs/construction/unit-2-perf-memory-diff/` for the full design
+  record.
 - `SECURITY.md` and `.github/release.yml` (categorizes `--generate-notes`
   output by PR label — only pays off once PRs actually carry those labels,
   which isn't an established habit yet).

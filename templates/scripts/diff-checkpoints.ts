@@ -33,13 +33,24 @@ if (!priorName) {
 }
 
 // Run a fresh checkpoint via the same script diff.md's step 2 already calls.
+// --allow-all, not a scoped flag: playwright-core's internal isWsl() check
+// does existsSync() on /proc/sys/fs/binfmt_misc/..., which Deno only
+// satisfies via unscoped --allow-all — confirmed empirically that no
+// combination of scoped flags (including --allow-read targeted at the
+// exact paths named in the error) works around it, same conclusion
+// extended-tests.yml/release.yml's Lane 2 invocation already reached.
+// Found by actually running this against a real project during Unit 2's
+// live smoke test; the previously scoped flag list (--allow-net/
+// --allow-read/--allow-write/--allow-env) failed with a NotCapable error
+// before ever reaching checkpoint.ts's own logic — a pre-existing gap
+// this fixes, not a Unit 2 regression. Not a real privilege widening in
+// practice: templates/deno-tasks.json's "diff-checkpoints" task already
+// runs this whole script with --allow-all, so this subprocess's flags
+// were never the actual boundary — the parent already had full access.
 const fresh = await new Deno.Command("deno", {
   args: [
     "run",
-    "--allow-net",
-    "--allow-read",
-    "--allow-write",
-    "--allow-env",
+    "--allow-all",
     "scripts/checkpoint.ts",
     label ?? "diff-current",
   ],
@@ -77,6 +88,17 @@ const memory = (priorData.memory && freshData.memory)
   }
   : null;
 
+// Same graceful-absence handling as memory above — an older checkpoint
+// predating Unit 2 simply omits `perf` here.
+const perf = (priorData.perf && freshData.perf)
+  ? {
+    callsDelta: freshData.perf.calls - priorData.perf.calls,
+    trianglesDelta: freshData.perf.triangles - priorData.perf.triangles,
+    pointsDelta: freshData.perf.points - priorData.perf.points,
+    linesDelta: freshData.perf.lines - priorData.perf.lines,
+  }
+  : null;
+
 console.log(JSON.stringify(
   {
     compared: { prior: priorBase, fresh: freshBase },
@@ -85,6 +107,7 @@ console.log(JSON.stringify(
     sceneObjectCountPrior: priorData.scene.length,
     sceneObjectCountFresh: freshData.scene.length,
     memory,
+    perf,
   },
   null,
   2,

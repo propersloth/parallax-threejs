@@ -60,4 +60,4 @@ jobs:
         # which Deno only satisfies via unscoped --allow-all regardless of
         # how --allow-read is scoped. That's inside the vendored
         # playwright-core package, not something we control.
-        run: deno test --allow-all templates/test/visual/lib/capture_test.ts templates/scripts/lib/live-scene_test.ts
+        run: deno test --allow-all templates/test/visual/lib/capture_test.ts templates/scripts/lib/live-scene_test.ts templates/lib/renderer-info_test.ts

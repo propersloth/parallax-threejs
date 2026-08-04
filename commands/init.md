@@ -12,8 +12,8 @@ these files live there and not hand-duplicated per project.
 1. **Shared lib**: for each file under `${CLAUDE_PLUGIN_ROOT}/templates/lib/`,
    copy it to the matching path under `./lib/` **only if that path
    doesn't already exist**. This holds code genuinely shared between the
-   scripts and the regression harness (currently just the renderer-memory
-   read) — copy it first, since steps 2 and 3 both import from it.
+   scripts and the regression harness (currently the renderer memory/perf
+   reads) — copy it first, since steps 2 and 3 both import from it.
 2. **Scripts**: for each file under `${CLAUDE_PLUGIN_ROOT}/templates/scripts/`,
    copy it to the matching path under `./scripts/` **only if that path
    doesn't already exist**. If it does exist, leave it alone and report

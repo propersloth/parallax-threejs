@@ -1,4 +1,4 @@
-import type { RendererMemory } from "../../../lib/renderer-memory.ts";
+import type { RendererMemory } from "../../../lib/renderer-info.ts";
 
 export interface MemoryGateResult {
   geometriesDelta: number;
