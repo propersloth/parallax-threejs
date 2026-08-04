@@ -8,7 +8,10 @@ import {
   collectConsoleMessages,
   getSceneSummary,
 } from "./lib/live-scene.ts";
-import { getRendererMemorySummary } from "../lib/renderer-memory.ts";
+import {
+  getRendererMemorySummary,
+  getRendererPerfSummary,
+} from "../lib/renderer-info.ts";
 
 const label = Deno.args[0] ?? "unlabeled";
 const CONSOLE_WINDOW_MS = 300;
@@ -20,6 +23,7 @@ await new Promise((r) => setTimeout(r, CONSOLE_WINDOW_MS));
 
 const scene = await getSceneSummary(page);
 const memory = await getRendererMemorySummary(page);
+const perf = await getRendererPerfSummary(page);
 const screenshotBuf = await page.screenshot();
 
 const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
@@ -31,7 +35,7 @@ await Deno.writeFile(`${dir}/${base}.png`, screenshotBuf);
 await Deno.writeTextFile(
   `${dir}/${base}.json`,
   JSON.stringify(
-    { timestamp, label, scene, console: messages, memory },
+    { timestamp, label, scene, console: messages, memory, perf },
     null,
     2,
   ),
@@ -45,6 +49,11 @@ console.log(
   memory
     ? `memory: ${memory.geometries} geometries, ${memory.textures} textures`
     : `memory: skipped (window.__renderer__ not exposed — optional, see /checkpoint prerequisites)`,
+);
+console.log(
+  perf
+    ? `perf: ${perf.calls} draw calls, ${perf.triangles} triangles`
+    : `perf: skipped (window.__renderer__ not exposed — optional, see /checkpoint prerequisites)`,
 );
 
 await browser.close(); // closes the CDP connection, NOT the actual browser tab

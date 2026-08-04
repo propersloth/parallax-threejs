@@ -77,6 +77,17 @@ const memory = (priorData.memory && freshData.memory)
   }
   : null;
 
+// Same graceful-absence handling as memory above — an older checkpoint
+// predating Unit 2 simply omits `perf` here.
+const perf = (priorData.perf && freshData.perf)
+  ? {
+    callsDelta: freshData.perf.calls - priorData.perf.calls,
+    trianglesDelta: freshData.perf.triangles - priorData.perf.triangles,
+    pointsDelta: freshData.perf.points - priorData.perf.points,
+    linesDelta: freshData.perf.lines - priorData.perf.lines,
+  }
+  : null;
+
 console.log(JSON.stringify(
   {
     compared: { prior: priorBase, fresh: freshBase },
@@ -85,6 +96,7 @@ console.log(JSON.stringify(
     sceneObjectCountPrior: priorData.scene.length,
     sceneObjectCountFresh: freshData.scene.length,
     memory,
+    perf,
   },
   null,
   2,
