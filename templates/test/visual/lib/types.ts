@@ -10,6 +10,12 @@ export interface Scenario {
   name: string;
   path: string;
   threshold?: number; // fraction of changed pixels, 0-1. Overrides the global default.
+  // Max allowed increase in EITHER geometries OR textures (checked
+  // independently, not summed — a geometry leak shouldn't be maskable by
+  // unrelated texture disposal in the same run, or vice versa) vs. the
+  // last accepted baseline. Unset means no memory check runs for this
+  // scenario — not a zero-tolerance default. See scenario-author.md §3a.
+  memoryThreshold?: number;
   steps: Step[];
 }
 
@@ -20,7 +26,27 @@ export interface HistoryEntry {
   status: "baseline" | "auto-accepted" | "accepted" | "pending-review";
 }
 
+// Memory entries need their own shape, not a forced fit into
+// HistoryEntry: geometries and textures are gated independently (see
+// Scenario.memoryThreshold's doc), so one delta number isn't enough, and
+// the absolute counts need to persist so the *next* run can diff against
+// them without a stored artifact (pixel entries don't need this — the
+// accepted PNG file on disk already serves that purpose).
+export interface MemoryHistoryEntry {
+  sha: string;
+  timestamp: string;
+  status: "baseline" | "auto-accepted" | "accepted" | "pending-review";
+  geometriesDelta: number | null;
+  texturesDelta: number | null;
+  value: { geometries: number; textures: number };
+}
+
 export interface Manifest {
   scenario: string;
   keyframes: Record<string, { history: HistoryEntry[] }>;
+  // Scenario-level, not per-keyframe: renderer memory is a whole-scene
+  // cumulative signal, not something that varies meaningfully shot to
+  // shot within one run. Absent entirely for scenarios with no
+  // memoryThreshold set.
+  memory?: { history: MemoryHistoryEntry[] };
 }

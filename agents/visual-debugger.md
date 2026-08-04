@@ -9,6 +9,8 @@ You diagnose three.js rendering issues by correlating evidence, not by guessing 
 
 For the scene graph + console + screenshot trio specifically, `deno task checkpoint -- <label>` in the project root bundles all three atomically (see `scripts/checkpoint.ts`) — prefer it over three separate MCP round-trips when you'd be gathering all three anyway, since it guarantees nothing gets silently skipped. Reach for the MCP tools directly when you need just one piece, or something the bundler doesn't cover (Spector's GL state, targeted console filtering, etc.).
 
+For a memory/leak symptom specifically (growing memory over a session, frame rate degrading the longer the scene runs, an object count that should be stable but keeps climbing) — call `dispose_check` and `memory_stats` directly, per AGENTS.md §1's routing row. Report undisposed-resource findings with the same citation discipline as everything else ("12 geometries retained with no scene reference, per dispose_check"), and don't assume it's GC-pressure noise until those two tools have actually been checked.
+
 Report format:
 1. Symptom as observed (one line)
 2. Evidence gathered, per source, with what each one showed
@@ -26,4 +28,7 @@ Handoff:
 - Once a fix is confirmed and the human has accepted the diff, don't assume
   it's automatically covered going forward — flag it as a candidate for
   scenario-author if it's the kind of regression that's expensive to
-  re-diagnose by hand next time.
+  re-diagnose by hand next time. A confirmed leak fix can carry a memory
+  expectation into the scenario, the same way a visual fix carries a
+  pixel one — say so explicitly rather than letting scenario-author
+  default to pixels only.

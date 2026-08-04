@@ -19,6 +19,7 @@ That loop isn't your fault. A screenshot is the least informative thing you can 
 - **"I keep manually re-doing the same click-hover-drag just to check something."** `/replay` records the interaction once and reruns it exactly every time, so you're not left wondering if you hovered the same spot as last time.
 - **"Two screenshots look different and I can't tell if that's the bug or the camera drifted."** `/sync-view` pins the camera to an exact, named framing, so a comparison is finally comparing the same shot.
 - **"My shader compiles fine but looks wrong, and the error console is useless."** The `shader-reviewer` subagent catches uniform and attribute mismatches, plus vertex/fragment drift a syntax checker can't see, before you even hit run.
+- **"Memory keeps climbing the longer I leave this running, and I don't know what I forgot to dispose."** `/memcheck` checks for undisposed geometries/textures/materials on demand — and once a leak fix is confirmed, it can carry a memory expectation into the regression suite the same way a visual fix carries a pixel one, so it can't quietly come back.
 - **"I want to know my last five fixes didn't quietly wreck the three things I fixed last week."** A git-SHA-indexed visual regression suite flags meaningful changes for your own review. Nothing gets auto-approved behind your back.
 
 Built for solo devs and hobbyists vibe-coding a real three.js/WebGL project with Claude Code. If you're a professional game dev with your own engine and pipeline already, this probably isn't for you. It's scoped tightly and deliberately to vanilla three.js: no React Three Fiber, no framework detection, one stack, done well.
@@ -44,6 +45,7 @@ Same plugin either way, just updated via the npm registry instead of this git re
 - **A vanilla three.js project.** No React Three Fiber. See the opening of `AGENTS.md` if you're curious why the scope stays this narrow on purpose.
 - **Your scene needs to be reachable.** Add `window.scene = scene` somewhere in your setup code. This is how the debug tools find anything at all. It's a common three.js debugging convention, not something Parallax invented, but it won't happen on its own.
 - **For `/sync-view` specifically**, also expose `window.__THREE_CAMERA__ = camera`. Without it, camera discovery falls back to scanning the scene graph for the first object with `.isCamera` set, which misses a camera that's constructed but never added as a scene child (an ordinary, valid pattern). If `/sync-view` says "No camera found" even though your scene is fine, this is almost always why.
+- **For a memory/dispose snapshot in `/checkpoint`, `/diff`, and the regression suite's optional `memoryThreshold` check**, also expose `window.__renderer__ = renderer`. This one's optional — everything else works exactly the same without it, the memory field is just omitted.
 - **Node.js and Deno**, both on your system `PATH`:
 
   ```bash
@@ -96,6 +98,7 @@ That's the whole minimum setup. Two optional add-ons worth knowing about once yo
 | `/sweep <object> <property> <range>` | Render every value in a range at once as a contact sheet, instead of testing values one at a time. |
 | `/replay <scenario>` | Rerun a recorded interaction (hover, click, drag) exactly, instead of doing it by hand again. |
 | `/sync-view <name>` | Snap the camera to an exact, reusable framing so comparisons stay honest. |
+| `/memcheck [object]` | On-demand check for undisposed geometries/textures/materials, without waiting for a symptom. |
 
 Behind these, three specialized subagents handle the heavier diagnostic work automatically: `shader-reviewer` catches shader bugs before they ever run, `visual-debugger` correlates all four evidence channels when something's actively wrong, and `scenario-author` turns a confirmed fix into permanent regression coverage. You generally won't call these by name; Claude reaches for the right one based on what you're doing.
 

@@ -21,6 +21,7 @@ diff when a tool can just tell you.
 | Perf complaint, WebGL context loss, or similar, and a debugging-knowledge skill happens to be installed | Same as above — optional, see `docs/RECOMMENDED-SKILLS.md`. |
 | Project has rigid bodies, collisions, or a physics dependency, and a physics-integration skill happens to be installed | Load it — otherwise this is out of scope for what ships here. |
 | Material/uniform values check out correct per threejs-devtools-mcp but the render is still wrong, or nothing draws with no console error | Spector MCP — inspect draw calls, compiled shader source, and GL state below the Three.js abstraction. Don't reach for this first; it only earns its cost once uniform/material-level evidence is exhausted. |
+| Memory grows over a session, frame rate degrades the longer the scene runs, or an object count that should be stable keeps climbing | `dispose_check`/`memory_stats` (threejs-devtools-mcp) via `visual-debugger` — check for undisposed geometries/textures/materials before treating it as a GC-pressure red herring. `/memcheck` covers the same ground on demand, without waiting for the symptom. |
 
 Don't preload everything "just in case." Load what the current task
 actually calls for — and don't assume a general-knowledge skill is
@@ -59,7 +60,10 @@ running state* — use them together, not sequentially as a last resort:
 
 1. **Scene graph (threejs-devtools-mcp)** — ground truth: transforms,
    material props, shader compile status, light params. This is what's
-   *actually true*, independent of what the code intends.
+   *actually true*, independent of what the code intends. Memory/leak
+   state lives here too — `dispose_check`/`memory_stats` surface
+   undisposed geometries/textures the graph's static view won't show on
+   its own; see §1's routing row for when to reach for them specifically.
 2. **Console/network/perf (chrome-devtools-mcp)** — silent failures: 404s on
    textures, shader compile warnings, dropped frames, GC pressure. These
    often produce zero visible symptom until you check.

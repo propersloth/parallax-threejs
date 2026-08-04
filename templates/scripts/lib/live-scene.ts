@@ -436,6 +436,12 @@ export async function setProperty(
   );
 }
 
+// RendererMemory/getRendererMemorySummary moved to templates/lib/
+// renderer-memory.ts — this file's helpers are scripts/-only concerns
+// (checkpoint/sweep/replay live-tab attachment), but the renderer-memory
+// read is shared with test/visual/lib/capture.ts too, per PR #30 review
+// finding #4.
+
 export function collectConsoleMessages(page: Page): string[] {
   const messages: string[] = [];
   page.on("console", (msg) => messages.push(`[${msg.type()}] ${msg.text()}`));
