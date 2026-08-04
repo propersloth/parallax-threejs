@@ -14,6 +14,7 @@
     "npm:pixelmatch@*": "7.2.0",
     "npm:pixelmatch@^7.2.0": "7.2.0",
     "npm:playwright@*": "1.62.0",
+    "npm:playwright@1.62.0": "1.62.0",
     "npm:playwright@^1.62.0": "1.62.0",
     "npm:pngjs@*": "7.0.0",
     "npm:pngjs@7": "7.0.0",

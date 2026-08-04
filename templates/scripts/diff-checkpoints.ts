@@ -33,13 +33,19 @@ if (!priorName) {
 }
 
 // Run a fresh checkpoint via the same script diff.md's step 2 already calls.
+// --allow-all, not a scoped flag: playwright-core's internal isWsl() check
+// does existsSync() on /proc/sys/fs/binfmt_misc/..., which Deno only
+// satisfies via unscoped --allow-all regardless of how --allow-read is
+// scoped — same reasoning already documented for Lane 2's test invocation
+// in extended-tests.yml/release.yml. Found by actually running this
+// against a real project during Unit 2's live smoke test; the previously
+// scoped flag list (--allow-net/--allow-read/--allow-write/--allow-env)
+// failed with a NotCapable error before ever reaching checkpoint.ts's own
+// logic, a pre-existing gap this fixes rather than a Unit 2 regression.
 const fresh = await new Deno.Command("deno", {
   args: [
     "run",
-    "--allow-net",
-    "--allow-read",
-    "--allow-write",
-    "--allow-env",
+    "--allow-all",
     "scripts/checkpoint.ts",
     label ?? "diff-current",
   ],
