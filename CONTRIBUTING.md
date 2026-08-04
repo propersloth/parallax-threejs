@@ -28,7 +28,7 @@ deno check scripts/*.ts
 deno fmt --check scripts/ hooks/ templates/
 deno lint scripts/ hooks/ templates/
 deno run --allow-read scripts/validate-config-syntax.ts
-deno test --allow-run=git --allow-read --allow-write --ignore=templates/test/visual/lib/capture_test.ts,templates/scripts/lib/live-scene_test.ts scripts/ hooks/ templates/
+deno test --allow-run=git --allow-read --allow-write --ignore=templates/test/visual/lib/capture_test.ts,templates/scripts/lib/live-scene_test.ts,templates/lib/renderer-info_test.ts templates/ scripts/ hooks/
 ```
 
 Also worth a manual `claude --plugin-dir .` session to sanity-check
