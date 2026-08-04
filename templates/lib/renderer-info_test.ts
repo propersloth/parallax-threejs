@@ -5,7 +5,7 @@
 // captureScenario, and getRendererPerfSummary (Unit 2) has no natural home
 // there at all, since Unit 2 doesn't touch capture.ts's behavior.
 import { assertEquals } from "@std/assert";
-import { chromium } from "playwright";
+import { chromium, type Page } from "playwright";
 import {
   getRendererMemorySummary,
   getRendererPerfSummary,
@@ -13,7 +13,7 @@ import {
 
 async function withPage<T>(
   html: string,
-  fn: (page: import("playwright").Page) => Promise<T>,
+  fn: (page: Page) => Promise<T>,
 ): Promise<T> {
   const server = Deno.serve(
     { port: 0, onListen: () => {} },
@@ -34,13 +34,19 @@ async function withPage<T>(
 const NO_RENDERER_HTML =
   `<!doctype html><html><body>no renderer here</body></html>`;
 
+// Includes `frame` in `render` — real WebGLRenderer.info.render always
+// does, even though RendererPerf deliberately omits it (see
+// renderer-info.ts). The point of including it here is to prove
+// getRendererPerfSummary actually excludes it from what it returns,
+// rather than the test only ever exercising an idealized shape that
+// happens to already match RendererPerf exactly.
 const RENDERER_HTML = `<!doctype html>
 <html><body>
 <script>
   window.__renderer__ = {
     info: {
       memory: { geometries: 6, textures: 10 },
-      render: { calls: 42, triangles: 1200, points: 0, lines: 3 },
+      render: { calls: 42, triangles: 1200, points: 0, lines: 3, frame: 9001 },
     },
   };
 </script>

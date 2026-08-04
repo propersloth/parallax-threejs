@@ -71,8 +71,20 @@ export async function getRendererPerfSummary(
   return await page.evaluate(() => {
     // @ts-ignore - browser global, optional prerequisite
     const renderer = globalThis.__renderer__ as
-      | { info?: { render?: RendererPerf } }
+      | { info?: { render?: RendererPerf & { frame?: number } } }
       | undefined;
-    return renderer?.info?.render ?? null;
+    const render = renderer?.info?.render;
+    if (!render) return null;
+    // Explicit pick, not a passthrough of the raw object — real
+    // WebGLRenderer.info.render also carries `frame` (deliberately
+    // omitted from RendererPerf, see above). Picking guarantees the
+    // returned shape actually matches RendererPerf, rather than relying
+    // on callers/tests never noticing an extra field tagging along.
+    return {
+      calls: render.calls,
+      triangles: render.triangles,
+      points: render.points,
+      lines: render.lines,
+    };
   });
 }
