@@ -1,5 +1,6 @@
 import { captureScenario } from "./lib/capture.ts";
 import { diffPngs } from "./lib/diff.ts";
+import { decideMemoryGate } from "./lib/memory-gate.ts";
 import {
   keyframeDir,
   lastAccepted,
@@ -121,44 +122,34 @@ async function cmdRun(names: string[]) {
             `  memory: no prior baseline — recorded as baseline (${memory.geometries} geometries, ${memory.textures} textures)`,
           );
         } else {
-          const geometriesDelta = memory.geometries - prior.value.geometries;
-          const texturesDelta = memory.textures - prior.value.textures;
-          // Checked independently, not summed — a geometry leak
-          // shouldn't be maskable by unrelated texture disposal in the
-          // same run (or vice versa). Either one alone crossing the
-          // threshold is enough to flag.
-          const exceeded = geometriesDelta > scenario.memoryThreshold ||
-            texturesDelta > scenario.memoryThreshold;
-
-          const entry = {
+          const { geometriesDelta, texturesDelta, status } = decideMemoryGate(
+            memory,
+            prior.value,
+            scenario.memoryThreshold,
+          );
+          manifest.memory.history.push({
             sha,
             timestamp,
             geometriesDelta,
             texturesDelta,
+            status,
             value: memory,
-          };
+          });
 
-          if (exceeded) {
-            manifest.memory.history.push({
-              ...entry,
-              status: "pending-review",
-            });
+          const deltaSummary = `geometries ${
+            geometriesDelta >= 0 ? "+" : ""
+          }${geometriesDelta}, textures ${
+            texturesDelta >= 0 ? "+" : ""
+          }${texturesDelta}`;
+
+          if (status === "pending-review") {
             console.log(
-              `  memory: ⚠ geometries ${
-                geometriesDelta >= 0 ? "+" : ""
-              }${geometriesDelta}, textures ${
-                texturesDelta >= 0 ? "+" : ""
-              }${texturesDelta} vs ${prior.sha} (threshold ${scenario.memoryThreshold}) — pending review`,
+              `  memory: ⚠ ${deltaSummary} vs ${prior.sha} (threshold ${scenario.memoryThreshold}) — pending review`,
             );
             anyPending = true;
           } else {
-            manifest.memory.history.push({ ...entry, status: "auto-accepted" });
             console.log(
-              `  memory: geometries ${
-                geometriesDelta >= 0 ? "+" : ""
-              }${geometriesDelta}, textures ${
-                texturesDelta >= 0 ? "+" : ""
-              }${texturesDelta} — within threshold, auto-accepted`,
+              `  memory: ${deltaSummary} — within threshold, auto-accepted`,
             );
           }
         }

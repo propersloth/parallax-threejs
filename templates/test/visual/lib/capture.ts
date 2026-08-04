@@ -1,8 +1,8 @@
 // Requires the Playwright browser binaries to be installed once:
 //   deno run -A npm:playwright install chromium
 import { chromium } from "playwright";
-import type { RendererMemory } from "../../../scripts/lib/live-scene.ts";
-import { getRendererMemorySummary } from "../../../scripts/lib/live-scene.ts";
+import type { RendererMemory } from "../../../lib/renderer-memory.ts";
+import { getRendererMemorySummary } from "../../../lib/renderer-memory.ts";
 import type { Scenario } from "./types.ts";
 
 export interface CaptureResult {

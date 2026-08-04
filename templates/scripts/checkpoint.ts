@@ -6,9 +6,9 @@
 import {
   attachToLiveScene,
   collectConsoleMessages,
-  getRendererMemorySummary,
   getSceneSummary,
 } from "./lib/live-scene.ts";
+import { getRendererMemorySummary } from "../lib/renderer-memory.ts";
 
 const label = Deno.args[0] ?? "unlabeled";
 const CONSOLE_WINDOW_MS = 300;
