@@ -39,6 +39,12 @@ outright if a scenario tries to use it for an actual keyframe. No
 `memoryThreshold` set means no memory check runs for that scenario at
 all — it's opt-in per scenario, not a new default.
 
+Per AGENTS.md §5, `deno task visual:run` runs in the background when
+it's the full suite (no scenario filter) or 2+ named scenarios — each
+scenario launches its own browser, so this adds up fast. A single named
+scenario stays synchronous, since that's the quick spot-check case and
+an immediate result is more useful than a background round-trip for it.
+
 ## Writing a new scenario
 
 - One scenario file per distinct visual state worth protecting — steps to
