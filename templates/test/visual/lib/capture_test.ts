@@ -112,6 +112,21 @@ Deno.test("captureScenario reads geometry/texture counts when window.__renderer_
   }
 });
 
+Deno.test("captureScenario rejects a keyframe literally named 'memory'", async () => {
+  const scenario: Scenario = {
+    name: "fixture-test",
+    path: "/",
+    steps: [{ action: "keyframe", name: "memory" }],
+  };
+  // No fixture server needed — this is checked before navigation, so it
+  // fails the same way regardless of what baseUrl points at.
+  await assertRejects(
+    () => captureScenario("http://localhost:1", scenario),
+    Error,
+    "reserved",
+  );
+});
+
 Deno.test("captureScenario's dragOrbit step throws a clear error when no canvas exists", async () => {
   const server = Deno.serve(
     { port: 0, onListen: () => {} },

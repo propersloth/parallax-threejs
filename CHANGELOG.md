@@ -22,9 +22,12 @@ results before cutting the tag — see the UAT runbook.
   field (requires exposing `window.__renderer__ = renderer`, same
   opt-in convention as `/sync-view`'s `window.__THREE_CAMERA__`), and the
   SHA-indexed regression suite gains an opt-in per-scenario
-  `memoryThreshold`, gated exactly like the existing pixel-diff threshold
+  `memoryThreshold`, gated similarly to the existing pixel-diff threshold
   (auto-accepted below threshold, `pending-review` above it, promoted via
-  `deno task visual:accept <scenario> memory`). See
+  `deno task visual:accept <scenario> memory`) — geometries and textures
+  are checked independently against it, not summed, so a leak in one
+  can't hide behind disposal in the other. `memory` as a keyframe name
+  is reserved and rejected outright if a scenario tries to reuse it. See
   `aidlc-docs/inception/`/`aidlc-docs/construction/unit-1-memcheck-routing/`
   for the full design record.
 - `SECURITY.md` and `.github/release.yml` (categorizes `--generate-notes`

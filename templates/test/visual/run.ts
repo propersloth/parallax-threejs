@@ -107,45 +107,58 @@ async function cmdRun(names: string[]) {
       } else {
         manifest.memory ??= { history: [] };
         const prior = lastAcceptedMemory(manifest);
-        const combined = memory.geometries + memory.textures;
 
-        if (!prior || prior.value === undefined) {
+        if (!prior) {
           manifest.memory.history.push({
             sha,
             timestamp,
-            diffFromPrev: null,
             status: "baseline",
-            value: combined,
+            geometriesDelta: null,
+            texturesDelta: null,
+            value: memory,
           });
           console.log(
-            `  memory: no prior baseline — recorded as baseline (${combined} geometries+textures)`,
+            `  memory: no prior baseline — recorded as baseline (${memory.geometries} geometries, ${memory.textures} textures)`,
           );
         } else {
-          const delta = combined - prior.value;
-          if (delta > scenario.memoryThreshold) {
+          const geometriesDelta = memory.geometries - prior.value.geometries;
+          const texturesDelta = memory.textures - prior.value.textures;
+          // Checked independently, not summed — a geometry leak
+          // shouldn't be maskable by unrelated texture disposal in the
+          // same run (or vice versa). Either one alone crossing the
+          // threshold is enough to flag.
+          const exceeded = geometriesDelta > scenario.memoryThreshold ||
+            texturesDelta > scenario.memoryThreshold;
+
+          const entry = {
+            sha,
+            timestamp,
+            geometriesDelta,
+            texturesDelta,
+            value: memory,
+          };
+
+          if (exceeded) {
             manifest.memory.history.push({
-              sha,
-              timestamp,
-              diffFromPrev: delta,
+              ...entry,
               status: "pending-review",
-              value: combined,
             });
             console.log(
-              `  memory: ⚠ +${delta} geometries+textures vs ${prior.sha} (threshold ${scenario.memoryThreshold}) — pending review`,
+              `  memory: ⚠ geometries ${
+                geometriesDelta >= 0 ? "+" : ""
+              }${geometriesDelta}, textures ${
+                texturesDelta >= 0 ? "+" : ""
+              }${texturesDelta} vs ${prior.sha} (threshold ${scenario.memoryThreshold}) — pending review`,
             );
             anyPending = true;
           } else {
-            manifest.memory.history.push({
-              sha,
-              timestamp,
-              diffFromPrev: delta,
-              status: "auto-accepted",
-              value: combined,
-            });
+            manifest.memory.history.push({ ...entry, status: "auto-accepted" });
             console.log(
-              `  memory: ${
-                delta >= 0 ? "+" : ""
-              }${delta} geometries+textures — within threshold, auto-accepted`,
+              `  memory: geometries ${
+                geometriesDelta >= 0 ? "+" : ""
+              }${geometriesDelta}, textures ${
+                texturesDelta >= 0 ? "+" : ""
+              }${texturesDelta} — within threshold, auto-accepted`,
             );
           }
         }

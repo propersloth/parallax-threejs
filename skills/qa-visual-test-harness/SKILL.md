@@ -27,12 +27,17 @@ sequence and one or more named keyframes. `deno task visual:run`:
 
 If a scenario also sets `memoryThreshold`, the same run reads a
 geometry/texture count from `window.__renderer__.info.memory` once (after
-all steps complete) and gates it exactly like a keyframe: below threshold
-increase → auto-accepted; above it → `pending-review`, promoted the same
-way with `deno task visual:accept <scenario> memory` — `memory` is a
-reserved keyframe name for this, distinct from any keyframe you name
-yourself. No `memoryThreshold` set means no memory check runs for that
-scenario at all — it's opt-in per scenario, not a new default.
+all steps complete) and gates it similarly to a keyframe — with one
+difference worth being explicit about: geometries and textures are
+checked **independently** against the threshold, not summed first.
+Summing them first would let a geometry leak hide behind unrelated
+texture disposal in the same run (or vice versa); either one alone
+exceeding the threshold is enough to flag `pending-review`, promoted the
+same way with `deno task visual:accept <scenario> memory` — `memory` is
+a reserved keyframe name for this, and `captureScenario` rejects it
+outright if a scenario tries to use it for an actual keyframe. No
+`memoryThreshold` set means no memory check runs for that scenario at
+all — it's opt-in per scenario, not a new default.
 
 ## Writing a new scenario
 

@@ -18,6 +18,21 @@ export async function captureScenario(
   baseUrl: string,
   scenario: Scenario,
 ): Promise<CaptureResult> {
+  // "memory" is reserved for the scenario-level memory check
+  // (types.ts's Manifest.memory) — enforced here, not just documented,
+  // so a scenario author who picks it for an unrelated pixel keyframe
+  // gets a loud error instead of `visual:accept <scenario> memory`
+  // silently resolving to the memory check and never touching their
+  // keyframe's own pending-review entry.
+  for (const step of scenario.steps) {
+    if (step.action === "keyframe" && step.name === "memory") {
+      throw new Error(
+        `scenario "${scenario.name}": keyframe name "memory" is reserved ` +
+          `for the scenario-level memory check — rename this keyframe.`,
+      );
+    }
+  }
+
   const browser = await chromium.launch();
   const page = await browser.newPage({
     viewport: { width: 1280, height: 800 },
