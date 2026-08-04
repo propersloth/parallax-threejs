@@ -43,14 +43,16 @@ results before cutting the tag — see the UAT runbook.
   overwrites so no existing scaffolded project is affected. See
   `aidlc-docs/construction/unit-2-perf-memory-diff/` for the full design
   record.
-- `/sweep` and `deno task visual:run` now run in the background
-  (AGENTS.md §5) instead of blocking the conversation — `/sweep` always,
-  since every sweep is a reload+screenshot per step; `visual:run` when
-  running the full suite or 2+ named scenarios, staying synchronous for
-  a single named scenario (the quick spot-check case). Doesn't change
-  what's visible in the browser tab — only Claude's own wait is removed,
-  not the human's "shared sight" into what's happening. Deliberately
-  does not apply to `scenario-author`'s `deno task replay` validation
+- `/sweep` and `deno task visual:run` now run via the Bash tool's
+  `run_in_background: true` (AGENTS.md §5) instead of blocking the
+  conversation — `/sweep` always, since every sweep is a
+  reload+screenshot per step; `visual:run` when running the full suite
+  or 2+ named scenarios, staying synchronous for a single named
+  scenario (the quick spot-check case). Claude tells the human it's
+  running, then reports the result once notified, for both. Doesn't
+  change what's visible in the browser tab — only Claude's own wait is
+  removed, not the human's "shared sight" into what's happening.
+  Deliberately does not apply to `scenario-author`'s `deno task replay` validation
   step, which needs its result immediately to decide whether a scenario
   reproduces cleanly. Pure instruction/behavior change — no script code
   changed. See `aidlc-docs/construction/unit-3-background-mode/` for the
