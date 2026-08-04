@@ -25,6 +25,15 @@ test/visual/lib/types.ts:
    anything with inherent frame-to-frame jitter (antialiasing, particle
    systems) typically needs closer to 0.035 or looser — reason from the
    actual noise floor of what you're capturing, not a fixed rule.
+3a. If the finding being promoted is a confirmed memory leak fix (not a
+   visual fix), also set `memoryThreshold` — the max allowed increase in
+   combined geometry+texture count vs. the last accepted baseline, per
+   `test/visual/lib/types.ts`. `0` means zero tolerance for regrowth;
+   only loosen it if the scenario's own interaction legitimately
+   allocates and never frees by design (rare — justify it in the
+   scenario's steps/comments if so). Leave `memoryThreshold` unset for
+   scenarios that aren't about memory — an unset value means no memory
+   check runs for that scenario, not a zero-tolerance default.
 4. **Validate before handing it off**: run `deno task replay -- <scenario-name>`
    from the project root — this is the exact same `captureScenario()` code
    path the regression suite will use, so validating this way actually

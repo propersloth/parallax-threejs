@@ -6,6 +6,7 @@
 import {
   attachToLiveScene,
   collectConsoleMessages,
+  getRendererMemorySummary,
   getSceneSummary,
 } from "./lib/live-scene.ts";
 
@@ -18,6 +19,7 @@ const messages = collectConsoleMessages(page);
 await new Promise((r) => setTimeout(r, CONSOLE_WINDOW_MS));
 
 const scene = await getSceneSummary(page);
+const memory = await getRendererMemorySummary(page);
 const screenshotBuf = await page.screenshot();
 
 const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
@@ -28,12 +30,21 @@ const base = `${timestamp}-${label}`;
 await Deno.writeFile(`${dir}/${base}.png`, screenshotBuf);
 await Deno.writeTextFile(
   `${dir}/${base}.json`,
-  JSON.stringify({ timestamp, label, scene, console: messages }, null, 2),
+  JSON.stringify(
+    { timestamp, label, scene, console: messages, memory },
+    null,
+    2,
+  ),
 );
 
 console.log(`checkpoint written: ${dir}/${base}.json (+ .png)`);
 console.log(
   `scene objects: ${scene.length}, console messages: ${messages.length}`,
+);
+console.log(
+  memory
+    ? `memory: ${memory.geometries} geometries, ${memory.textures} textures`
+    : `memory: skipped (window.__renderer__ not exposed — optional, see /checkpoint prerequisites)`,
 );
 
 await browser.close(); // closes the CDP connection, NOT the actual browser tab

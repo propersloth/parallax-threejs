@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import { lastAccepted } from "./manifest.ts";
+import { lastAccepted, lastAcceptedMemory } from "./manifest.ts";
 import type { HistoryEntry, Manifest } from "./types.ts";
 
 function entry(sha: string, status: HistoryEntry["status"]): HistoryEntry {
@@ -49,4 +49,24 @@ Deno.test("lastAccepted returns null when every entry is pending-review", () => 
     keyframes: { frame1: { history: [entry("aaa", "pending-review")] } },
   };
   assertEquals(lastAccepted(m, "frame1"), null);
+});
+
+Deno.test("lastAcceptedMemory returns the most recent non-pending-review entry", () => {
+  const m: Manifest = {
+    scenario: "test",
+    keyframes: {},
+    memory: {
+      history: [
+        entry("aaa", "baseline"),
+        entry("bbb", "auto-accepted"),
+        entry("ccc", "pending-review"),
+      ],
+    },
+  };
+  assertEquals(lastAcceptedMemory(m)?.sha, "bbb");
+});
+
+Deno.test("lastAcceptedMemory returns null when there's no memory history at all", () => {
+  const m: Manifest = { scenario: "test", keyframes: {} };
+  assertEquals(lastAcceptedMemory(m), null);
 });

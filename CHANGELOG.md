@@ -15,6 +15,18 @@ Tracking toward the 1.0.0 release. Update this section with real UAT
 results before cutting the tag — see the UAT runbook.
 
 ### Added
+- `/memcheck` command and an AGENTS.md §1 routing row so `visual-debugger`
+  reaches for threejs-devtools-mcp's `dispose_check`/`memory_stats` on a
+  leak/GC-pressure symptom automatically — previously bundled but unrouted.
+  `/checkpoint`/`/diff` gain an optional geometry/texture memory
+  field (requires exposing `window.__renderer__ = renderer`, same
+  opt-in convention as `/sync-view`'s `window.__THREE_CAMERA__`), and the
+  SHA-indexed regression suite gains an opt-in per-scenario
+  `memoryThreshold`, gated exactly like the existing pixel-diff threshold
+  (auto-accepted below threshold, `pending-review` above it, promoted via
+  `deno task visual:accept <scenario> memory`). See
+  `aidlc-docs/inception/`/`aidlc-docs/construction/unit-1-memcheck-routing/`
+  for the full design record.
 - `SECURITY.md` and `.github/release.yml` (categorizes `--generate-notes`
   output by PR label — only pays off once PRs actually carry those labels,
   which isn't an established habit yet).

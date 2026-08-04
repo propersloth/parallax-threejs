@@ -46,7 +46,7 @@ Deno.test("captureScenario drives waitForSelector, click, evaluate, and keyframe
       ],
     };
 
-    const shots = await captureScenario(baseUrl, scenario);
+    const { shots } = await captureScenario(baseUrl, scenario);
     assertEquals(Object.keys(shots).sort(), ["after-click", "initial"]);
     assertEquals(shots.initial.length > 0, true);
     assertEquals(shots["after-click"].length > 0, true);
@@ -64,11 +64,52 @@ Deno.test("captureScenario's wait step actually delays execution", async () => {
       ],
     };
     const start = performance.now();
-    const shots = await captureScenario(baseUrl, scenario);
+    const { shots } = await captureScenario(baseUrl, scenario);
     const elapsed = performance.now() - start;
     assertEquals("after-wait" in shots, true);
     assertEquals(elapsed >= 100, true);
   });
+});
+
+Deno.test("captureScenario returns memory: null when window.__renderer__ isn't exposed", async () => {
+  await withFixtureServer(async (baseUrl) => {
+    const scenario: Scenario = {
+      name: "fixture-test",
+      path: "/",
+      steps: [{ action: "keyframe", name: "shot" }],
+    };
+    const { memory } = await captureScenario(baseUrl, scenario);
+    assertEquals(memory, null);
+  });
+});
+
+Deno.test("captureScenario reads geometry/texture counts when window.__renderer__ is exposed", async () => {
+  const html = `<!doctype html>
+<html><body>
+<canvas id="c" width="200" height="200"></canvas>
+<script>
+  window.__renderer__ = { info: { memory: { geometries: 3, textures: 2 } } };
+</script>
+</body></html>`;
+  const server = Deno.serve(
+    { port: 0, onListen: () => {} },
+    () => new Response(html, { headers: { "content-type": "text/html" } }),
+  );
+  const port = (server.addr as Deno.NetAddr).port;
+  try {
+    const scenario: Scenario = {
+      name: "fixture-test-with-renderer",
+      path: "/",
+      steps: [{ action: "keyframe", name: "shot" }],
+    };
+    const { memory } = await captureScenario(
+      `http://localhost:${port}`,
+      scenario,
+    );
+    assertEquals(memory, { geometries: 3, textures: 2 });
+  } finally {
+    await server.shutdown();
+  }
 });
 
 Deno.test("captureScenario's dragOrbit step throws a clear error when no canvas exists", async () => {

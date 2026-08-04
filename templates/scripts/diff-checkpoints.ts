@@ -66,6 +66,17 @@ const newConsoleMessages = freshData.console.filter((m: string) =>
   !priorData.console.includes(m)
 );
 
+// Both sides need a memory field for a delta to mean anything — an older
+// checkpoint predating this feature, or a project that's never exposed
+// window.__renderer__, simply omits `memory` here rather than reporting
+// a misleading delta against a missing baseline.
+const memory = (priorData.memory && freshData.memory)
+  ? {
+    geometriesDelta: freshData.memory.geometries - priorData.memory.geometries,
+    texturesDelta: freshData.memory.textures - priorData.memory.textures,
+  }
+  : null;
+
 console.log(JSON.stringify(
   {
     compared: { prior: priorBase, fresh: freshBase },
@@ -73,6 +84,7 @@ console.log(JSON.stringify(
     newConsoleMessages,
     sceneObjectCountPrior: priorData.scene.length,
     sceneObjectCountFresh: freshData.scene.length,
+    memory,
   },
   null,
   2,

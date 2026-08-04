@@ -1,12 +1,23 @@
 // Requires the Playwright browser binaries to be installed once:
 //   deno run -A npm:playwright install chromium
 import { chromium } from "playwright";
+import type { RendererMemory } from "../../../scripts/lib/live-scene.ts";
+import { getRendererMemorySummary } from "../../../scripts/lib/live-scene.ts";
 import type { Scenario } from "./types.ts";
+
+export interface CaptureResult {
+  shots: Record<string, Uint8Array>;
+  // Read once, after all steps complete — a whole-scene cumulative
+  // count, not something meaningfully captured per-keyframe. null when
+  // window.__renderer__ isn't exposed (optional prerequisite, same as
+  // checkpoint.ts's use of the same helper).
+  memory: RendererMemory | null;
+}
 
 export async function captureScenario(
   baseUrl: string,
   scenario: Scenario,
-): Promise<Record<string, Uint8Array>> {
+): Promise<CaptureResult> {
   const browser = await chromium.launch();
   const page = await browser.newPage({
     viewport: { width: 1280, height: 800 },
@@ -45,6 +56,7 @@ export async function captureScenario(
     }
   }
 
+  const memory = await getRendererMemorySummary(page);
   await browser.close();
-  return shots;
+  return { shots, memory };
 }

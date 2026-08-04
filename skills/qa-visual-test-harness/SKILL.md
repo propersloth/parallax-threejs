@@ -25,6 +25,15 @@ sequence and one or more named keyframes. `deno task visual:run`:
    and exits non-zero. **Never auto-accepted** — a human runs
    `deno task visual:accept <scenario> <keyframe>` to promote it.
 
+If a scenario also sets `memoryThreshold`, the same run reads a
+geometry/texture count from `window.__renderer__.info.memory` once (after
+all steps complete) and gates it exactly like a keyframe: below threshold
+increase → auto-accepted; above it → `pending-review`, promoted the same
+way with `deno task visual:accept <scenario> memory` — `memory` is a
+reserved keyframe name for this, distinct from any keyframe you name
+yourself. No `memoryThreshold` set means no memory check runs for that
+scenario at all — it's opt-in per scenario, not a new default.
+
 ## Writing a new scenario
 
 - One scenario file per distinct visual state worth protecting — steps to
@@ -39,6 +48,9 @@ sequence and one or more named keyframes. `deno task visual:run`:
   before trusting it in the suite — an unreliable scenario generates
   false-positive `pending-review` noise on every future commit, which is
   worse than no scenario at all.
+- Only set `memoryThreshold` when the scenario is specifically protecting
+  a confirmed memory/leak fix — see `agents/scenario-author.md` §3a. Most
+  scenarios should leave it unset.
 
 ## Reading a result
 

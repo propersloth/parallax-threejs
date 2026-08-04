@@ -31,7 +31,7 @@ try {
 }
 
 const baseUrl = Deno.env.get("VISUAL_TEST_BASE_URL") ?? "http://localhost:3000";
-const shots = await captureScenario(baseUrl, scenario);
+const { shots } = await captureScenario(baseUrl, scenario);
 
 const dir = ".parallax/replays";
 await Deno.mkdir(dir, { recursive: true });

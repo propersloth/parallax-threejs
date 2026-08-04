@@ -3,6 +3,7 @@ import { diffPngs } from "./lib/diff.ts";
 import {
   keyframeDir,
   lastAccepted,
+  lastAcceptedMemory,
   loadManifest,
   saveManifest,
 } from "./lib/manifest.ts";
@@ -40,7 +41,7 @@ async function cmdRun(names: string[]) {
     console.log(
       `\n▶ ${scenario.name} (threshold ${(threshold * 100).toFixed(1)}%)`,
     );
-    const shots = await captureScenario(BASE_URL, scenario);
+    const { shots, memory } = await captureScenario(BASE_URL, scenario);
     const manifest = await loadManifest(scenario.name);
 
     for (const [keyframe, png] of Object.entries(shots)) {
@@ -94,6 +95,63 @@ async function cmdRun(names: string[]) {
         );
       }
     }
+
+    // Memory check is opt-in per scenario (see types.ts's memoryThreshold
+    // doc) — unset means this block does nothing, same as before this
+    // feature existed.
+    if (scenario.memoryThreshold !== undefined) {
+      if (memory === null) {
+        console.log(
+          `  memory: ⚠ scenario declares memoryThreshold but window.__renderer__ isn't exposed — skipping memory check this run`,
+        );
+      } else {
+        manifest.memory ??= { history: [] };
+        const prior = lastAcceptedMemory(manifest);
+        const combined = memory.geometries + memory.textures;
+
+        if (!prior || prior.value === undefined) {
+          manifest.memory.history.push({
+            sha,
+            timestamp,
+            diffFromPrev: null,
+            status: "baseline",
+            value: combined,
+          });
+          console.log(
+            `  memory: no prior baseline — recorded as baseline (${combined} geometries+textures)`,
+          );
+        } else {
+          const delta = combined - prior.value;
+          if (delta > scenario.memoryThreshold) {
+            manifest.memory.history.push({
+              sha,
+              timestamp,
+              diffFromPrev: delta,
+              status: "pending-review",
+              value: combined,
+            });
+            console.log(
+              `  memory: ⚠ +${delta} geometries+textures vs ${prior.sha} (threshold ${scenario.memoryThreshold}) — pending review`,
+            );
+            anyPending = true;
+          } else {
+            manifest.memory.history.push({
+              sha,
+              timestamp,
+              diffFromPrev: delta,
+              status: "auto-accepted",
+              value: combined,
+            });
+            console.log(
+              `  memory: ${
+                delta >= 0 ? "+" : ""
+              }${delta} geometries+textures — within threshold, auto-accepted`,
+            );
+          }
+        }
+      }
+    }
+
     await saveManifest(manifest);
   }
 
@@ -107,6 +165,22 @@ async function cmdRun(names: string[]) {
 
 async function cmdAccept(scenario: string, keyframe: string) {
   const manifest = await loadManifest(scenario);
+
+  // The "memory" keyframe name is reserved for the scenario-level memory
+  // check (types.ts's Manifest.memory) — no per-sha image files exist for
+  // it, so promotion is just a status flip, unlike the pixel path below.
+  if (keyframe === "memory") {
+    const pending = manifest.memory?.history.at(-1);
+    if (!pending || pending.status !== "pending-review") {
+      console.error(`no pending memory entry for ${scenario}`);
+      Deno.exit(1);
+    }
+    pending.status = "accepted";
+    await saveManifest(manifest);
+    console.log(`accepted ${scenario}/memory @ ${pending.sha} as new baseline`);
+    return;
+  }
+
   const pending = manifest.keyframes[keyframe]?.history.at(-1);
   if (!pending || pending.status !== "pending-review") {
     console.error(`no pending entry for ${scenario}/${keyframe}`);
