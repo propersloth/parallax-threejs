@@ -186,6 +186,23 @@ that can't show anything.
   marker, it does not call MCP tools itself — see hooks/post-edit.js.
 - `deno task visual:run` belongs in a post-commit hook, not pre-commit —
   the SHA it indexes against doesn't exist until the commit lands.
+- **Run `deno task sweep` and `deno task visual:run` via the Bash
+  tool's `run_in_background: true`, not a blocking call, whenever
+  they're likely to take real wall time.** Always background
+  `deno task sweep` (every sweep is a reload+screenshot per step,
+  non-trivial even for a modest range) — tell the human it's running,
+  then report the contact sheet once notified (see `commands/sweep.md`).
+  For `deno task visual:run`, background it when running the full suite
+  (no scenario filter) or 2+ named scenarios — tell the human it's
+  running, then report the pass/fail summary once notified, the same
+  way; a single named scenario stays synchronous instead — that's the
+  quick spot-check case, and an immediate inline result beats a
+  background round-trip for it. This doesn't change what the human sees
+  in the browser tab — only Claude's own wait, not the "shared sight"
+  the tab provides, is what backgrounding removes. Don't background
+  `scenario-author`'s `deno task replay` validation step — it needs the
+  result immediately to decide whether the scenario reproduces cleanly,
+  not on a later notification.
 
 ---
 
