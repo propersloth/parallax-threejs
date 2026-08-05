@@ -64,6 +64,27 @@ results before cutting the tag — see the UAT runbook.
   stated "vanilla three.js only, no React Three Fiber" scope (AGENTS.md's
   opening paragraph). AGENTS.md now names it explicitly and instructs
   against using it, rather than leaving the inconsistency unaddressed.
+- **WebGPU options menu** in `docs/RECOMMENDED-DEPENDENCIES.md`, sibling
+  to the existing WebGL menu — physics (Rapier/Jolt/cannon-es) and
+  animation/tweening (GSAP/Theatre.js/Tween.js) carry over unchanged
+  (renderer-agnostic), audio too, but postprocessing does not:
+  `WebGPURenderer` doesn't support the legacy `EffectComposer` pass
+  system at all. New recommended default there is three.js's own
+  `RenderPipeline` (node-based, TSL, ships with three.js, zero extra
+  dependency), with pmndrs/postprocessing v7+ as an alternative (verify
+  individual effects against `WebGPURenderer` rather than assuming full
+  parity with its WebGL-era coverage). `scripts/setup.ts`'s messaging
+  updated to stop implying the WebGPU menu doesn't exist yet — it exists,
+  just isn't wired into the interactive picker.
+- Documented the `parallax-threejs-stable` SSH-clone-only installer
+  failure (`git@github.com: Permission denied`) and its workaround in
+  README's troubleshooting section — not fixable from this repo (Claude
+  Code's own installer behavior), but the workaround wasn't written down
+  anywhere before this (closes #17's documentation half).
+- PR labeling established as an actual habit, not just a documented
+  categorization scheme nobody follows: `CONTRIBUTING.md` now says PRs
+  should carry a label, and every previously-unlabeled merged PR in this
+  repo's history was labeled retroactively (closes #18).
 - `SECURITY.md` and `.github/release.yml` (categorizes `--generate-notes`
   output by PR label — only pays off once PRs actually carry those labels,
   which isn't an established habit yet).

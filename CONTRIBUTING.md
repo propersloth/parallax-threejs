@@ -173,3 +173,10 @@ already cover what those would duplicate.
   unearned confidence — this project flags unverified assumptions
   explicitly throughout rather than glossing over them, and new
   contributions should keep doing that.
+- **Carries a label** (`bug`, `documentation`, `enhancement`,
+  `dependencies`, `github_actions`, etc. — `gh label list` for the full
+  set) — this is what lets `.github/release.yml`'s `--generate-notes`
+  categorization actually produce categorized output instead of
+  everything falling into the catch-all. Manual, applied when opening
+  the PR — not worth a labeler automation for a repo this size; the
+  habit is the fix.
