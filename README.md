@@ -16,6 +16,7 @@ That loop isn't your fault. A screenshot is the least informative thing you can 
 - **"Why is this thing invisible?"** Claude checks the scene graph (materials, transforms, shader compile status), the console (a silently failed texture load, maybe), and the pixels together, then tells you which one actually explains it.
 - **"I tweaked one thing and now I'm scared something else broke without me noticing."** Run `/checkpoint` before and `/diff` after. You get a pixel diff, a console diff, and a scene-graph diff — plus, if you've exposed `window.__renderer__`, a memory and perf (draw-call/triangle) delta too — instead of two browser tabs and your own eyeballs.
 - **"I want to show someone else this diff without pasting screenshots into Slack one at a time."** `/export-report` renders the last `/diff` result as one self-contained HTML file — before/after/overlay screenshots, console diff, and scene/memory/perf deltas embedded inline — that opens and reads correctly outside the chat session entirely.
+- **"I think this is done — is it actually ready to ship?"** `/ship-check` runs a Lighthouse accessibility/SEO/best-practices/agentic-browsing pass plus a Core Web Vitals trace, and tells you plainly what's blocking vs. a nice-to-have — a deliberate final pass, not something that fires mid-debugging-session.
 - **"I'm doing the '0.6... okay, 0.7...' dance with a light color or intensity."** `/sweep` renders the whole range at once as a contact sheet, so you see every option side by side instead of bisecting by hand one slow reload at a time — and it runs in the background, so it's not holding the conversation hostage while it works.
 - **"I keep manually re-doing the same click-hover-drag just to check something."** `/replay` records the interaction once and reruns it exactly every time, so you're not left wondering if you hovered the same spot as last time.
 - **"Two screenshots look different and I can't tell if that's the bug or the camera drifted."** `/sync-view` pins the camera to an exact, named framing, so a comparison is finally comparing the same shot.
@@ -107,10 +108,12 @@ $ deno run -A <path-to-parallax-threejs-clone>/scripts/setup.ts
 | `/init` | Run this first, once per project. Scaffolds everything below into your actual project. |
 | `/checkpoint <label>` | Snapshot the scene graph, console, and a screenshot as one unit before you change anything. |
 | `/diff <label>` | Compare right now against that snapshot: pixel diff, console diff, scene-graph diff, one report. |
+| `/export-report [label]` | Render the last `/diff` result for a label as one self-contained, shareable HTML file. |
 | `/sweep <object> <property> <range>` | Render every value in a range at once as a contact sheet, instead of testing values one at a time. |
 | `/replay <scenario>` | Rerun a recorded interaction (hover, click, drag) exactly, instead of doing it by hand again. |
 | `/sync-view <name>` | Snap the camera to an exact, reusable framing so comparisons stay honest. |
 | `/memcheck [object]` | On-demand check for undisposed geometries/textures/materials, without waiting for a symptom. |
+| `/ship-check` | Deliberate, on-demand pre-ship pass — Lighthouse accessibility/SEO/best-practices/agentic-browsing plus a Core Web Vitals trace. |
 
 Behind these, three specialized subagents handle the heavier diagnostic work automatically: `shader-reviewer` catches shader bugs before they ever run, `visual-debugger` correlates all four evidence channels when something's actively wrong, and `scenario-author` turns a confirmed fix into permanent regression coverage. You generally won't call these by name; Claude reaches for the right one based on what you're doing.
 
