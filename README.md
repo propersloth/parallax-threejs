@@ -108,10 +108,12 @@ $ deno run -A <path-to-parallax-threejs-clone>/scripts/setup.ts
 | `/init` | Run this first, once per project. Scaffolds everything below into your actual project. |
 | `/checkpoint <label>` | Snapshot the scene graph, console, and a screenshot as one unit before you change anything. |
 | `/diff <label>` | Compare right now against that snapshot: pixel diff, console diff, scene-graph diff, one report. |
+| `/export-report [label]` | Render the last `/diff` result for a label as one self-contained, shareable HTML file. |
 | `/sweep <object> <property> <range>` | Render every value in a range at once as a contact sheet, instead of testing values one at a time. |
 | `/replay <scenario>` | Rerun a recorded interaction (hover, click, drag) exactly, instead of doing it by hand again. |
 | `/sync-view <name>` | Snap the camera to an exact, reusable framing so comparisons stay honest. |
 | `/memcheck [object]` | On-demand check for undisposed geometries/textures/materials, without waiting for a symptom. |
+| `/ship-check` | Deliberate, on-demand pre-ship pass — Lighthouse accessibility/SEO/best-practices/agentic-browsing plus a Core Web Vitals trace. |
 
 Behind these, three specialized subagents handle the heavier diagnostic work automatically: `shader-reviewer` catches shader bugs before they ever run, `visual-debugger` correlates all four evidence channels when something's actively wrong, and `scenario-author` turns a confirmed fix into permanent regression coverage. You generally won't call these by name; Claude reaches for the right one based on what you're doing.
 
