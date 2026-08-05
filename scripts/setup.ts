@@ -52,7 +52,7 @@ function platformScript(baseName: string): [string, string[]] {
 
 p.intro("Parallax — project setup");
 p.note(
-  "This picker only offers the WebGL menu's picks. A WebGPU menu now\nexists too (docs/RECOMMENDED-DEPENDENCIES.md) but isn't wired into\nthis interactive flow yet — deno add npm:<package> works for any of\nits picks in the meantime.",
+  "This picker only offers the WebGL menu's picks. WebGPU and WebXR\nmenus now exist too (docs/RECOMMENDED-DEPENDENCIES.md) but aren't\nwired into this interactive flow yet — deno add npm:<package> works\nfor any of their picks in the meantime.",
   "Scope",
 );
 

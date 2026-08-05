@@ -9,10 +9,11 @@ exist in your project. Neither category is bundled with Parallax itself
 ## The WebGL options menu
 
 Everything below is **the WebGL menu** — curated for `WebGLRenderer`,
-matching Parallax's current scope (AGENTS.md). A sibling WebGPU menu now
-exists too (below) — each menu gets its own research and curation, not
-folded into a single undifferentiated list. Don't assume a WebGL-menu
-pick applies unchanged to `WebGPURenderer`; check the WebGPU menu first.
+matching Parallax's current scope (AGENTS.md). Sibling WebGPU and WebXR
+menus now exist too (below) — each menu gets its own research and
+curation, not folded into a single undifferentiated list. Don't assume a
+WebGL-menu pick applies unchanged to `WebGPURenderer` or a WebXR
+session; check the relevant menu first.
 
 Researched at time of writing (see `scripts/setup.ts`'s interactive
 picker) — this space moves; re-verify before trusting these as
@@ -161,10 +162,129 @@ Same as the WebGL menu, unchanged — **[Howler.js](https://howlerjs.com/)**
 and built-in `THREE.PositionalAudio` both sit on the Web Audio API, which
 has no relationship to the rendering backend at all.
 
+## The WebXR options menu
+
+Everything below is **the WebXR menu** — curated for VR/AR sessions on
+top of either renderer. Out of scope entirely: `@react-three/xr` — it's
+React Three Fiber-based, which this plugin's own scope discipline
+excludes regardless of how good the library is (AGENTS.md's "no React
+Three Fiber, no second three.js stack path"). Everything here targets
+vanilla three.js's own WebXR support.
+
+Researched at time of writing — this space moves fast and unevenly (see
+the browser support note below in particular); re-verify before trusting
+these as permanently current.
+
+### Browser and device support — read this before picking anything else
+
+Unlike the WebGPU menu's "~95% coverage" story, WebXR support is
+genuinely fragmented by browser and device, not just a matter of an
+old-browser tail:
+
+- **Chrome**: full support, desktop and Android (including Samsung
+  Galaxy XR).
+- **Safari**: WebXR ships only on visionOS (Apple Vision Pro), with a
+  gaze-and-pinch input model distinct from controller/hand tracking.
+  **Not implemented on macOS, iOS, or iPadOS** — an iPhone or iPad
+  cannot run a WebXR session in Safari at all, handheld AR included.
+- **Firefox**: **no WebXR support**, desktop or Android — Mozilla paused
+  the implementation after discontinuing Firefox Reality.
+- **Meta Quest Browser**: full support, including passthrough AR, plane
+  detection, anchors, and hand tracking.
+- **Samsung Internet, Opera**: full support on compatible devices.
+
+Practical consequence: "WebXR-capable" means a real, device-specific
+subset of your users, not "everyone except stragglers." Design a
+non-XR fallback path as a first-class requirement, not an afterthought —
+most of your audience will hit it. Interop 2026 lists WebXR as a
+coordination focus area, so cross-browser gaps are actively being
+worked but aren't closed yet.
+
+### Controller and hand tracking
+
+No third-party pick needed — this ships with three.js itself, unlike
+every other section on this menu.
+
+- **`XRControllerModelFactory`** (`three/addons/webxr/`) — fetches and
+  renders a visual model matching the controller the user is actually
+  holding. Built in, zero extra dependency.
+- **`XRHandModelFactory`** (`three/addons/webxr/`) — same idea for
+  hand-tracking input, with three built-in model styles ("spheres",
+  "boxes", "mesh"). Hand tracking itself is a device capability (Quest
+  supports it via WebXR; whether a given headset/browser combination
+  does is part of the fragmentation above, not something this library
+  controls).
+
+### Locomotion / teleportation
+
+Also not a third-party-library decision the way physics or animation
+are. The standard approach — nest the camera and controllers in a group,
+move the group to relocate the player — is demonstrated directly in
+three.js's own [`webxr_vr_teleport`](https://threejs.org/examples/webxr_vr_teleport.html)
+example, not packaged as an installable addon. A few small community
+libraries exist (e.g. `smarthug/teleport`, TeleportVR) if you want a
+pre-built version of the same pattern, but none has the kind of
+ecosystem weight that makes Rapier or GSAP an easy default pick here —
+reading the official example and adapting it is a reasonable, common
+path.
+
+### Physics
+
+Same as the WebGL/WebGPU menus, unchanged — **[Rapier](https://rapier.rs/)**
+remains the recommended default, **[Jolt Physics](https://github.com/jrouwe/JoltPhysics.js)**
+the feature-richer alternative, cannon-es the same confirmed-unmaintained
+caveat applies. Nothing about WebXR changes this: physics computation is
+WASM/CPU-side and only syncs transforms back to three.js objects — it
+doesn't touch the renderer or the XR session either.
+
+### Animation / tweening
+
+Same as the WebGL/WebGPU menus, unchanged — **[GSAP](https://gsap.com/)**
+remains the recommended default, **[Theatre.js](https://www.theatrejs.com/)**
+and Tween.js the same alternatives, `AnimationMixer` still the right
+tool for GLTF/skeletal/keyframe animation. None of this is
+renderer-pipeline- or XR-session-specific.
+
+### Postprocessing — no recommended default, deliberately
+
+Every other section on every menu in this document names a recommended
+default. This one doesn't, because the honest current state doesn't
+support picking one:
+
+- **Legacy `EffectComposer`** has long-standing, still-open reports of
+  breaking entirely inside a WebXR session — content that renders fine
+  before entering VR/AR renders nothing, or renders only to one eye,
+  once the session starts. Not a configuration mistake to work around;
+  a structural mismatch between how `EffectComposer` handles render
+  targets and how an XR session's stereo rendering works.
+- **`RenderPipeline`** (the WebGPU menu's own recommended default) has
+  active but **unstable, in-progress** work specifically for WebXR as of
+  this writing — "enable single-pass rendering in WebXR" is still an
+  open draft PR against three.js's own repo, targeting a future release
+  rather than shipped. Don't treat WebGPU's postprocessing recommendation
+  as carrying over into an XR session; it doesn't yet.
+- **pmndrs/postprocessing** has confirmed, acknowledged effort underway
+  toward WebXR support, not a finished story either.
+
+Practical guidance until this settles: keep XR sessions visually simple
+(tone mapping and basic material work go a long way) rather than reaching
+for full post-processing, or gate postprocessing off entirely while an
+XR session is active and re-enable it on exit. Re-check this section
+specifically before trusting any "it works now" claim — this is the one
+area of the whole document most likely to be stale shortly after
+writing.
+
+### Audio
+
+Same as every other menu, unchanged — **[Howler.js](https://howlerjs.com/)**
+and built-in `THREE.PositionalAudio` both sit on the Web Audio API, which
+has no relationship to the rendering backend or XR session state.
+`THREE.AudioListener` follows the active camera automatically, XR or not.
+
 ## Installing any of these
 
 `scripts/setup.ts`'s interactive picker currently only offers the WebGL
-menu's picks (see its own in-picker note) — the WebGPU menu above isn't
-wired into it yet. For anything on either menu, `deno add npm:<package>`
-directly in your project's `deno.json` works regardless of whether the
-picker knows about it.
+menu's picks (see its own in-picker note) — the WebGPU and WebXR menus
+above aren't wired into it yet. For anything on any menu,
+`deno add npm:<package>` directly in your project's `deno.json` works
+regardless of whether the picker knows about it.

@@ -123,6 +123,23 @@ results before cutting the tag — see the UAT runbook.
   design record, including an empirically-confirmed finding: Chromium
   coalesces intermediate touchmove samples regardless of dispatch timing,
   but a drag gesture's final position is always correct regardless.
+- **WebXR dependency menu** (sibling to the WebGL and WebGPU menus in
+  `docs/RECOMMENDED-DEPENDENCIES.md`) — controller/hand tracking ships
+  built into three.js itself (no third-party pick needed);
+  physics/animation/audio carry over unchanged from the other menus;
+  postprocessing deliberately has **no** recommended default, unlike
+  every other section in the document — `EffectComposer` has
+  long-standing reports of breaking entirely inside a WebXR session, and
+  `RenderPipeline`'s own WebXR work is still an open draft PR against
+  three.js, not shipped. Leads with a browser/device support reality
+  check (Safari WebXR is visionOS-only, no iOS/iPadOS at all; Firefox has
+  no WebXR support after discontinuing Firefox Reality) since that's a
+  much more fragmented picture than the WebGPU menu's "~95% coverage."
+  Explicitly excludes `@react-three/xr` (React Three Fiber-based, outside
+  this plugin's scope regardless of quality). `scripts/setup.ts`'s scope
+  note updated to mention both sibling menus, not just WebGPU. See
+  `aidlc-docs/construction/unit-9-webxr-menu/` for the full design
+  record.
 - Documented the `parallax-threejs-stable` SSH-clone-only installer
   failure (`git@github.com: Permission denied`) and its workaround in
   README's troubleshooting section — not fixable from this repo (Claude
