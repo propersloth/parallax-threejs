@@ -134,3 +134,5 @@ const record: DiffRecord = {
 const safeStamp = timestamp.replace(/[:.]/g, "-");
 const recordPath = `${diffsDir}/${safeStamp}-${diffLabel}.json`;
 await Deno.writeTextFile(recordPath, JSON.stringify(record, null, 2));
+
+console.log(`diff record written: ${recordPath}`);
