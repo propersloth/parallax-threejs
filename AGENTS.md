@@ -204,6 +204,14 @@ that can't show anything.
   scene-state-over-time). Its performance/Core-Web-Vitals half is exactly
   the class of timing number §7a already flags as advisory-not-diagnostic
   on the Pi 5 deployment path — don't drop that caveat when reporting it.
+- Touch/mobile scenarios are a scenario-level `device` field
+  (viewport/`isMobile`/`hasTouch`), not separate step verbs — a
+  scenario's existing `click`/`dragOrbit` steps dispatch via real touch
+  input automatically once set. This isn't `chrome-devtools-mcp`'s
+  `emulate` tool — `/replay`/the regression suite launch their own
+  isolated headless Playwright browser (`captureScenario()`), which
+  `emulate` (a live-shared-tab tool) can't reach and CI can't spin up the
+  same way. See `agents/scenario-author.md` §3b.
 - **Run `deno task sweep` and `deno task visual:run` via the Bash
   tool's `run_in_background: true`, not a blocking call, whenever
   they're likely to take real wall time.** Always background

@@ -38,6 +38,14 @@ test/visual/lib/types.ts:
    check runs for that scenario, not a zero-tolerance default. Never name
    a keyframe `memory` — that name is reserved for this check and
    `captureScenario` rejects it outright.
+3b. If the finding being promoted is specifically about touch/mobile
+   behavior (not desktop mouse interaction), set `device` — viewport plus
+   `isMobile`/`hasTouch` — rather than authoring separate touch-only step
+   verbs. The scenario's existing `click`/`dragOrbit` steps dispatch via
+   real touch input automatically when `device.hasTouch` is set; there's
+   no `tap`/`touchDragOrbit` action to reach for. Leave `device` unset
+   for ordinary desktop scenarios — that's the default and changes
+   nothing about how they're authored or validated.
 4. **Validate before handing it off**: run `deno task replay -- <scenario-name>`
    from the project root — this is the exact same `captureScenario()` code
    path the regression suite will use, so validating this way actually

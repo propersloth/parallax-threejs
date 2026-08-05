@@ -16,6 +16,20 @@ export interface Scenario {
   // last accepted baseline. Unset means no memory check runs for this
   // scenario — not a zero-tolerance default. See scenario-author.md §3a.
   memoryThreshold?: number;
+  // Unset means desktop, exactly as before this field existed — every
+  // existing scenario with no `device` behaves identically (1280x800,
+  // mouse input), zero risk to already-accepted baselines. When set,
+  // `click`/`dragOrbit` steps dispatch via real touch input instead of
+  // mouse automatically — no separate touch-flavored step verbs to
+  // author. See Unit 7's functional design for why this couldn't be
+  // chrome-devtools-mcp's `emulate` tool (that operates on a live shared
+  // tab, not this pipeline's own isolated headless browser).
+  device?: {
+    viewport: { width: number; height: number };
+    isMobile?: boolean;
+    hasTouch?: boolean;
+    deviceScaleFactor?: number;
+  };
   steps: Step[];
 }
 
