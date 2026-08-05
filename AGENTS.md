@@ -5,6 +5,14 @@ you can see," for a vanilla three.js/GLSL prototype debugged mostly by eye.
 Scope is deliberately narrow: vanilla three.js only, no React Three Fiber —
 there's no framework branching to worry about, one project, one stack.
 
+**One documented exception**: `threejs-devtools-mcp` (the bundled MCP
+server — a third-party dependency, not something Parallax authored)
+also ships a `gltf_to_r3f` tool, its own React Three Fiber code-
+generation feature. It's out of scope for this plugin regardless of its
+presence on the server — don't reach for it. If someone asks about
+converting a glTF to React Three Fiber specifically, say this plugin
+doesn't support that rather than using the tool just because it exists.
+
 Everything below is written to make the MCP tools (chrome-devtools-mcp,
 threejs-devtools-mcp, playwright-mcp, spector) and skills earn their keep
 over a default coding session — don't fall back to guessing from a code
