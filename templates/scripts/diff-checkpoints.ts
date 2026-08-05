@@ -3,7 +3,9 @@
 // `label`, runs a fresh one, and diffs both (scene JSON, console, pixels).
 // Does NOT decide what the diff *means* or write the human-readable
 // report — that's still the agent's job per diff.md steps 4-6.
+import { Buffer } from "node:buffer";
 import { diffPngs } from "../test/visual/lib/diff.ts";
+import type { DiffRecord } from "./lib/report.ts";
 
 const label = Deno.args[0];
 const dir = ".parallax/checkpoints";
@@ -71,7 +73,7 @@ const freshBase = freshName!.replace(/\.json$/, "");
 const freshData = JSON.parse(await Deno.readTextFile(`${dir}/${freshName}`));
 const freshPng = await Deno.readFile(`${dir}/${freshBase}.png`);
 
-const { ratio } = diffPngs(priorPng, freshPng);
+const { ratio, diffPng } = diffPngs(priorPng, freshPng);
 
 const newConsoleMessages = freshData.console.filter((m: string) =>
   !priorData.console.includes(m)
@@ -99,16 +101,36 @@ const perf = (priorData.perf && freshData.perf)
   }
   : null;
 
-console.log(JSON.stringify(
-  {
-    compared: { prior: priorBase, fresh: freshBase },
-    pixelDiffRatio: ratio,
-    newConsoleMessages,
-    sceneObjectCountPrior: priorData.scene.length,
-    sceneObjectCountFresh: freshData.scene.length,
-    memory,
-    perf,
-  },
-  null,
-  2,
-));
+const summary = {
+  compared: { prior: priorBase, fresh: freshBase },
+  pixelDiffRatio: ratio,
+  newConsoleMessages,
+  sceneObjectCountPrior: priorData.scene.length,
+  sceneObjectCountFresh: freshData.scene.length,
+  memory,
+  perf,
+};
+
+console.log(JSON.stringify(summary, null, 2));
+
+// Persist a fully self-contained record so /export-report has something
+// durable to render later without re-deriving anything — see Unit 6's
+// functional design. Base64-embeds all three images so the diff record
+// itself never needs to go looking for the checkpoint PNGs again.
+const diffsDir = ".parallax/diffs";
+await Deno.mkdir(diffsDir, { recursive: true });
+
+const timestamp = new Date().toISOString();
+const diffLabel = label ?? "diff-current";
+const record: DiffRecord = {
+  timestamp,
+  label: diffLabel,
+  ...summary,
+  priorScreenshotBase64: Buffer.from(priorPng).toString("base64"),
+  freshScreenshotBase64: Buffer.from(freshPng).toString("base64"),
+  diffOverlayBase64: Buffer.from(diffPng).toString("base64"),
+};
+
+const safeStamp = timestamp.replace(/[:.]/g, "-");
+const recordPath = `${diffsDir}/${safeStamp}-${diffLabel}.json`;
+await Deno.writeTextFile(recordPath, JSON.stringify(record, null, 2));

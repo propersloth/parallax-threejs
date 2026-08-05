@@ -194,6 +194,10 @@ that can't show anything.
   marker, it does not call MCP tools itself — see hooks/post-edit.js.
 - `deno task visual:run` belongs in a post-commit hook, not pre-commit —
   the SHA it indexes against doesn't exist until the commit lands.
+- `export-report` renders the most recently persisted `/diff` result — it
+  does not run a fresh checkpoint or diff itself. If nothing's been
+  diffed yet for that label, run `/diff <label>` first rather than
+  treating `export-report`'s "nothing found" as a bug.
 - **Run `deno task sweep` and `deno task visual:run` via the Bash
   tool's `run_in_background: true`, not a blocking call, whenever
   they're likely to take real wall time.** Always background

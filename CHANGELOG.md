@@ -76,6 +76,20 @@ results before cutting the tag — see the UAT runbook.
   parity with its WebGL-era coverage). `scripts/setup.ts`'s messaging
   updated to stop implying the WebGPU menu doesn't exist yet — it exists,
   just isn't wired into the interactive picker.
+- **`/export-report` command** for exportable HTML session reports —
+  renders the most recent persisted `/diff` result (before/after/overlay
+  screenshots, console diff, scene-graph counts, memory/perf deltas when
+  present) as one self-contained HTML file with images embedded as
+  base64 `data:` URIs, so it opens and reads correctly outside the chat
+  session entirely. `/diff`'s underlying script now also persists each
+  comparison to `.parallax/diffs/<timestamp>-<label>.json` (previously
+  fully ephemeral, printed to stdout only) so there's something durable
+  for `/export-report` to render from without recomputing anything.
+  Rendering logic lives in a new pure, testable `templates/scripts/lib/
+  report.ts` (Lane 1 tests), mirroring the `memory-gate.ts` extraction
+  pattern from PR #30's review. See
+  `aidlc-docs/construction/unit-6-export-report/` for the full design
+  record.
 - Documented the `parallax-threejs-stable` SSH-clone-only installer
   failure (`git@github.com: Permission denied`) and its workaround in
   README's troubleshooting section — not fixable from this repo (Claude
