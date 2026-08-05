@@ -198,6 +198,12 @@ that can't show anything.
   does not run a fresh checkpoint or diff itself. If nothing's been
   diffed yet for that label, run `/diff <label>` first rather than
   treating `export-report`'s "nothing found" as a bug.
+- `ship-check` is a deliberate, on-demand pass — not something to reach
+  for mid-debugging-session, and not part of the `/checkpoint`→`/diff`
+  evidence bundle (different kind of signal: page-load/markup audit, not
+  scene-state-over-time). Its performance/Core-Web-Vitals half is exactly
+  the class of timing number §7a already flags as advisory-not-diagnostic
+  on the Pi 5 deployment path — don't drop that caveat when reporting it.
 - **Run `deno task sweep` and `deno task visual:run` via the Bash
   tool's `run_in_background: true`, not a blocking call, whenever
   they're likely to take real wall time.** Always background

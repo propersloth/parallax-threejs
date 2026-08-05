@@ -90,6 +90,22 @@ results before cutting the tag — see the UAT runbook.
   pattern from PR #30's review. See
   `aidlc-docs/construction/unit-6-export-report/` for the full design
   record.
+- **`/ship-check` command** — a deliberate, on-demand pre-ship pass:
+  Lighthouse accessibility/SEO/best-practices/agentic-browsing (desktop
+  and mobile) plus a Core Web Vitals trace, with a plain-language verdict
+  on what's actually blocking vs. a nice-to-have. Pure MCP-tool
+  orchestration (`lighthouse_audit`, `performance_start_trace`/
+  `analyze_insight`) — no new `templates/scripts/*.ts`, since
+  chrome-devtools-mcp already provides everything this needs as
+  first-class tools. Deliberately does not touch `AGENTS.md`'s routing
+  table (on-demand only, not automatic) or the `/checkpoint`→`/diff`
+  bundle (a different kind of signal — page-load/markup audit, not
+  scene-state-over-time). The Core Web Vitals half is explicitly
+  reported as advisory-not-diagnostic on the Pi 5 deployment path, per
+  §7a's existing caveat about chrome-devtools-mcp's timing numbers on
+  that hardware. See
+  `aidlc-docs/construction/unit-8-lighthouse-ship-readiness/` for the
+  full design record.
 - Documented the `parallax-threejs-stable` SSH-clone-only installer
   failure (`git@github.com: Permission denied`) and its workaround in
   README's troubleshooting section — not fixable from this repo (Claude
