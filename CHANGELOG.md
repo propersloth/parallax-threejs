@@ -106,6 +106,23 @@ results before cutting the tag — see the UAT runbook.
   that hardware. See
   `aidlc-docs/construction/unit-8-lighthouse-ship-readiness/` for the
   full design record.
+- **Touch/mobile interaction support in `/replay`** — a scenario's
+  optional `device` field (viewport, `isMobile`, `hasTouch`,
+  `deviceScaleFactor`) makes its existing `click`/`dragOrbit` steps
+  dispatch via real touch input instead of mouse, no separate
+  touch-flavored step verbs to author. Taps use Playwright's own
+  `page.tap()`; drags use CDP's `Input.dispatchTouchEvent` directly
+  (`Touchscreen` has no drag/swipe primitive). Not built on
+  `chrome-devtools-mcp`'s `emulate` tool despite FR-7's original wording
+  — `/replay` and the SHA-indexed regression suite share one isolated
+  headless Playwright browser (`captureScenario()`), which `emulate` (a
+  live-shared-tab tool) can't reach and CI can't spin up the same way.
+  Every existing scenario with no `device` field is unaffected — desktop,
+  mouse input, exactly as before. See
+  `aidlc-docs/construction/unit-7-touch-mobile-replay/` for the full
+  design record, including an empirically-confirmed finding: Chromium
+  coalesces intermediate touchmove samples regardless of dispatch timing,
+  but a drag gesture's final position is always correct regardless.
 - Documented the `parallax-threejs-stable` SSH-clone-only installer
   failure (`git@github.com: Permission denied`) and its workaround in
   README's troubleshooting section — not fixable from this repo (Claude

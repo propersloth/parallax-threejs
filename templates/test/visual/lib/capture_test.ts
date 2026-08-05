@@ -127,6 +127,186 @@ Deno.test("captureScenario rejects a keyframe literally named 'memory'", async (
   );
 });
 
+// These three tests exploit getRendererMemorySummary's existing
+// window.__renderer__.info.memory readback channel to smuggle real
+// pass/fail signals out of the page — captureScenario() only returns
+// {shots, memory}, so this is the one way to assert something actually
+// fired inside the browser rather than just that a step didn't throw.
+// Each fixture reports either a raw count (when one number is enough)
+// or a boolean check computed in-page (1 = passed, 0 = failed, when the
+// real condition needs more than the two available numeric fields can
+// carry as raw values).
+
+Deno.test("captureScenario's click step dispatches a real touch tap when scenario.device.hasTouch is set", async () => {
+  const html = `<!doctype html>
+<html><body>
+<canvas id="c" width="200" height="200"></canvas>
+<button id="btn" style="width:100px;height:40px">Click me</button>
+<script>
+  window.__touchstart = 0;
+  window.__mousedown = 0;
+  const btn = document.getElementById("btn");
+  btn.addEventListener("touchstart", () => window.__touchstart++);
+  btn.addEventListener("mousedown", () => window.__mousedown++);
+</script>
+</body></html>`;
+  const server = Deno.serve(
+    { port: 0, onListen: () => {} },
+    () => new Response(html, { headers: { "content-type": "text/html" } }),
+  );
+  const port = (server.addr as Deno.NetAddr).port;
+  try {
+    const scenario: Scenario = {
+      name: "touch-click",
+      path: "/",
+      device: {
+        viewport: { width: 390, height: 844 },
+        isMobile: true,
+        hasTouch: true,
+      },
+      steps: [
+        { action: "waitForSelector", selector: "#btn" },
+        { action: "click", selector: "#btn" },
+        {
+          action: "evaluate",
+          script: "window.__renderer__ = { info: { memory: { " +
+            "geometries: window.__touchstart, textures: window.__mousedown } } }",
+        },
+        { action: "keyframe", name: "after-tap" },
+      ],
+    };
+    const { memory } = await captureScenario(
+      `http://localhost:${port}`,
+      scenario,
+    );
+    // A real touch tap fired (touchstart). Confirmed empirically (not
+    // assumed) that the browser also synthesizes a compatibility
+    // mousedown afterward for an element that doesn't preventDefault on
+    // touchstart — standard touch-to-mouse-event-synthesis behavior, not
+    // a leftover mouse path in this implementation. Only asserting the
+    // touch event actually happened, not that no mouse event ever
+    // follows it.
+    assertEquals(memory?.geometries, 1);
+  } finally {
+    await server.shutdown();
+  }
+});
+
+Deno.test("captureScenario's dragOrbit step dispatches a real touch gesture landing at the correct final position when scenario.device.hasTouch is set", async () => {
+  // Chromium's input pipeline coalesces intermediate touchmove samples
+  // (confirmed empirically, see capture.ts's touchDragOrbit comment) —
+  // asserting an exact intermediate move count would be asserting
+  // browser-coalescing behavior, not this implementation's correctness.
+  // What's actually guaranteed and worth testing: exactly one
+  // touchstart, exactly one touchend, at least one touchmove landed
+  // (real touch input happened, not a silent no-op), and the gesture's
+  // final position matches the requested dx exactly.
+  const html = `<!doctype html>
+<html><body>
+<canvas id="c" width="200" height="200" style="touch-action:none"></canvas>
+<script>
+  window.__touchstart = 0;
+  window.__touchmove = 0;
+  window.__touchend = 0;
+  window.__startX = null;
+  window.__endX = null;
+  const canvas = document.getElementById("c");
+  canvas.addEventListener("touchstart", (e) => {
+    window.__touchstart++;
+    window.__startX = e.touches[0].clientX;
+  });
+  canvas.addEventListener("touchmove", () => window.__touchmove++);
+  canvas.addEventListener("touchend", (e) => {
+    window.__touchend++;
+    window.__endX = e.changedTouches[0].clientX;
+  });
+</script>
+</body></html>`;
+  const server = Deno.serve(
+    { port: 0, onListen: () => {} },
+    () => new Response(html, { headers: { "content-type": "text/html" } }),
+  );
+  const port = (server.addr as Deno.NetAddr).port;
+  try {
+    const dx = 50;
+    const scenario: Scenario = {
+      name: "touch-drag-orbit",
+      path: "/",
+      device: {
+        viewport: { width: 390, height: 844 },
+        isMobile: true,
+        hasTouch: true,
+      },
+      steps: [
+        { action: "waitForSelector", selector: "canvas" },
+        { action: "dragOrbit", dx, dy: 0 },
+        {
+          action: "evaluate",
+          script: "window.__renderer__ = { info: { memory: { " +
+            "geometries: (window.__touchstart === 1 && window.__touchend === 1 " +
+            "&& window.__touchmove >= 1) ? 1 : 0, " +
+            `textures: (window.__endX - window.__startX === ${dx}) ? 1 : 0 } } }`,
+        },
+        { action: "keyframe", name: "after-drag" },
+      ],
+    };
+    const { memory } = await captureScenario(
+      `http://localhost:${port}`,
+      scenario,
+    );
+    // { geometries: 1 } = exactly one touchstart/touchend, at least one
+    // touchmove; { textures: 1 } = gesture ended exactly dx away from
+    // where it started.
+    assertEquals(memory, { geometries: 1, textures: 1 });
+  } finally {
+    await server.shutdown();
+  }
+});
+
+Deno.test("captureScenario's dragOrbit step still uses mouse, not touch, when scenario.device is unset", async () => {
+  const html = `<!doctype html>
+<html><body>
+<canvas id="c" width="200" height="200"></canvas>
+<script>
+  window.__mousedown = 0;
+  window.__touchstart = 0;
+  const canvas = document.getElementById("c");
+  canvas.addEventListener("mousedown", () => window.__mousedown++);
+  canvas.addEventListener("touchstart", () => window.__touchstart++);
+</script>
+</body></html>`;
+  const server = Deno.serve(
+    { port: 0, onListen: () => {} },
+    () => new Response(html, { headers: { "content-type": "text/html" } }),
+  );
+  const port = (server.addr as Deno.NetAddr).port;
+  try {
+    const scenario: Scenario = {
+      name: "desktop-drag-orbit",
+      path: "/",
+      steps: [
+        { action: "waitForSelector", selector: "canvas" },
+        { action: "dragOrbit", dx: 50, dy: 0 },
+        {
+          action: "evaluate",
+          script: "window.__renderer__ = { info: { memory: { " +
+            "geometries: window.__mousedown, textures: window.__touchstart } } }",
+        },
+        { action: "keyframe", name: "after-drag" },
+      ],
+    };
+    const { memory } = await captureScenario(
+      `http://localhost:${port}`,
+      scenario,
+    );
+    // Existing behavior unchanged: mouse fired, touch didn't, for a
+    // scenario with no device field — exactly as before this unit.
+    assertEquals(memory, { geometries: 1, textures: 0 });
+  } finally {
+    await server.shutdown();
+  }
+});
+
 Deno.test("captureScenario's dragOrbit step throws a clear error when no canvas exists", async () => {
   const server = Deno.serve(
     { port: 0, onListen: () => {} },

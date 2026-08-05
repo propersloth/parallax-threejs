@@ -62,6 +62,12 @@ an immediate result is more useful than a background round-trip for it.
 - Only set `memoryThreshold` when the scenario is specifically protecting
   a confirmed memory/leak fix — see `agents/scenario-author.md` §3a. Most
   scenarios should leave it unset.
+- Only set `device` (viewport + `isMobile`/`hasTouch`) when the scenario
+  is specifically protecting touch/mobile behavior — see
+  `agents/scenario-author.md` §3b. `click`/`dragOrbit` steps dispatch via
+  real touch input automatically once set; there's no separate touch
+  step vocabulary. Most scenarios should leave it unset (desktop, mouse
+  input, exactly as before this field existed).
 
 ## Reading a result
 
