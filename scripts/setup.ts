@@ -52,7 +52,7 @@ function platformScript(baseName: string): [string, string[]] {
 
 p.intro("Parallax — project setup");
 p.note(
-  "This is the WebGL options menu — the only one that exists today.\nOther render engines (WebGPU most likely next) get their own menu\nlater, one at a time, as bandwidth allows.",
+  "This picker only offers the WebGL menu's picks. A WebGPU menu now\nexists too (docs/RECOMMENDED-DEPENDENCIES.md) but isn't wired into\nthis interactive flow yet — deno add npm:<package> works for any of\nits picks in the meantime.",
   "Scope",
 );
 
@@ -162,7 +162,7 @@ const postprocessing = checkCancel(
   }),
 );
 p.note(
-  "Not on the WebGL menu: three.js r183+'s RenderPipeline (formerly\nPostProcessing) requires WebGPURenderer — belongs to a future\nWebGPU menu, not this one. See docs/RECOMMENDED-DEPENDENCIES.md.",
+  "Not on the WebGL menu: three.js r183+'s RenderPipeline (formerly\nPostProcessing) requires WebGPURenderer — it's this picker's WebGL\nmenu that doesn't apply, not a missing feature. See the WebGPU menu\nin docs/RECOMMENDED-DEPENDENCIES.md for the WebGPURenderer picks.",
   "Postprocessing",
 );
 

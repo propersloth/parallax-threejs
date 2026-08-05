@@ -125,6 +125,7 @@ Installing the plugin wires up four browser/GPU inspection tools automatically (
 - **`/checkpoint` or `/sweep` can't resolve an object.** You're missing `window.scene = scene`. See Prerequisites above.
 - **Spector tools missing.** Run `scripts/setup-spector.sh` once. It's a clone-and-build step, not an npm install, so it doesn't happen automatically.
 - **Performance numbers look off on Raspberry Pi.** Read `AGENTS.md` §7a before trusting any FPS/timing number on that hardware specifically. It's a known GPU-pipeline quirk on that platform, not a bug here.
+- **`parallax-threejs-stable` fails to install with `git@github.com: Permission denied (publickey)`.** This happens on any machine without SSH keys configured for GitHub, even when `git`/`gh` are fully authenticated over HTTPS otherwise — Claude Code's installer always attempts an SSH clone for this specific marketplace-entry type, with no automatic HTTPS fallback (the rolling `parallax-threejs` entry doesn't have this problem; only the tag-pinned `-stable` one does). Not something this repo can fix — it's Claude Code's own installer behavior. Workaround: `git config --global url."https://github.com/".insteadOf "git@github.com:"` (and the same for `ssh://git@github.com/`).
 
 ## Want the deep end?
 
