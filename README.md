@@ -88,6 +88,17 @@ That's the whole minimum setup. Two optional add-ons worth knowing about once yo
 - **[Recommended skills](docs/RECOMMENDED-SKILLS.md)**: general three.js/WebGL knowledge for Claude, on top of the debugging loop. Not bundled, genuinely optional.
 - **[Recommended dependencies](docs/RECOMMENDED-DEPENDENCIES.md)**: a curated pick of physics, animation, and postprocessing libraries, if your project needs any of that.
 
+Both of those, plus Spector setup, are also one guided command away instead of wiring them up by hand:
+
+```
+$ deno run -A <path-to-parallax-threejs-clone>/scripts/setup.ts
+
+◆  Set up Spector for GL-state-level debugging?
+◆  Physics engine?
+◆  Animation / tweening library?
+...
+```
+
 ## Your toolkit
 
 | Command | What it's actually for |
