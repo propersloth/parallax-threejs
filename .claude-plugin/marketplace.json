@@ -25,7 +25,7 @@
       "source": {
         "source": "github",
         "repo": "propersloth/parallax-threejs",
-        "ref": "v0.3.41"
+        "ref": "v0.4.0"
       },
       "description": "Same plugin as parallax-threejs, pinned to the last deliberately-cut stable release instead of tracking main live — pick this if you want updates only when a stable version is manually released, not on every merge."
     }
