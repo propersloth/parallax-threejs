@@ -57,6 +57,13 @@ results before cutting the tag — see the UAT runbook.
   reproduces cleanly. Pure instruction/behavior change — no script code
   changed. See `aidlc-docs/construction/unit-3-background-mode/` for the
   full design record.
+- Documented `threejs-devtools-mcp`'s bundled `gltf_to_r3f` tool as
+  explicitly out of scope — it's a third-party dependency's own React
+  Three Fiber code-generation feature, not something Parallax added, and
+  its presence on the server was a quiet contradiction of this plugin's
+  stated "vanilla three.js only, no React Three Fiber" scope (AGENTS.md's
+  opening paragraph). AGENTS.md now names it explicitly and instructs
+  against using it, rather than leaving the inconsistency unaddressed.
 - `SECURITY.md` and `.github/release.yml` (categorizes `--generate-notes`
   output by PR label — only pays off once PRs actually carry those labels,
   which isn't an established habit yet).
