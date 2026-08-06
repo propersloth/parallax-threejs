@@ -10,7 +10,7 @@
       "name": "parallax-threejs",
       "source": "./",
       "description": "Three.js/GLSL debugging for Claude Code — correlates scene graph, console, GL state, and pixels into one diagnosis. Plus SHA-indexed visual regression testing.",
-      "version": "0.4.10"
+      "version": "0.4.11"
     },
     {
       "name": "parallax-threejs-npm",
@@ -25,7 +25,7 @@
       "source": {
         "source": "github",
         "repo": "propersloth/parallax-threejs",
-        "ref": "v0.4.10"
+        "ref": "v0.4.11"
       },
       "description": "Same plugin as parallax-threejs, pinned to the last deliberately-cut stable release instead of tracking main live — pick this if you want updates only when a stable version is manually released, not on every merge."
     }
