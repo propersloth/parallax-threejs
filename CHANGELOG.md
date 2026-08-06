@@ -25,6 +25,21 @@ cuts), not every commit.
 
 ## [Unreleased]
 
+## [0.4.11] - 2026-08-06
+
+### Fixed
+- `.claude/settings.json` (`enabledPlugins.parallax-threejs@propersloth`)
+  was created but never `git add`ed, so fresh clones of this repo were
+  silently missing the config that self-enables the plugin for its own
+  contributors — agents/skills didn't load automatically on clone. Now
+  tracked.
+
+## [0.4.10] - 2026-08-06
+
+Retroactively cut, same as the `[0.4.8]` note above — this content
+landed on `main` (#46) before the `v0.4.10` release.yml cut but was
+never moved out of `[Unreleased]` at the time.
+
 ### Added
 - README's "Quick start" now shows the real thing instead of just
   describing it: an embedded `examples/teapot-demo/demo.gif` (full-quality
