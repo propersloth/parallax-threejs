@@ -261,6 +261,18 @@ results before cutting the tag — see the UAT runbook.
   new Pi users into the now-headless default — found by testing this fix
   on the maintainer's own Pi 5 dev machine, which would otherwise have
   been silently misconfigured by its own bugfix.
+- The previous fix for the unprompted-Chrome-window bug only covered
+  `chrome-devtools-mcp` and `playwright-mcp`; `threejs-devtools-mcp` is a
+  third, unrelated server in the same `.mcp.json` template that opens a
+  visible browser at `localhost:9222` via a plain OS `xdg-open` call, not
+  a Puppeteer launch — `--headless` in `args` does nothing to it, so it
+  kept popping a window even on a freshly-scaffolded, already-"fixed"
+  project. Found by the window reappearing on the maintainer's own
+  machine right after cutting the release that shipped the first fix.
+  Added `"HEADLESS": "true"` to its `env` block instead (its own
+  documented mechanism for this) and updated the README troubleshooting
+  entry to cover all three servers. `examples/raspberry-pi/mcp.json` is
+  intentionally left headed on all three, unchanged.
 
 ### Known limitations at time of writing
 - **A package's very first npm publish sets `latest` too, regardless of

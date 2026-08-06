@@ -7,7 +7,7 @@
     "threejs-devtools-mcp": {
       "command": "npx",
       "args": ["-y", "threejs-devtools-mcp@0.2.1"],
-      "env": { "DEV_PORT": "3000" }
+      "env": { "DEV_PORT": "3000", "HEADLESS": "true" }
     },
     "playwright-mcp": {
       "command": "npx",
