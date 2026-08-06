@@ -255,7 +255,12 @@ results before cutting the tag — see the UAT runbook.
   new README troubleshooting entry for how to fix a project that already
   has the old template copied in. `examples/raspberry-pi/mcp.json` is
   intentionally left headed — AGENTS.md §7a documents why headless
-  rendering isn't reliable on that hardware.
+  rendering isn't reliable on that hardware. `/init` step 6 now actively
+  checks for Pi hardware (`/proc/device-tree/model`, falling back to
+  `uname -a`) and copies the Pi template instead of silently defaulting
+  new Pi users into the now-headless default — found by testing this fix
+  on the maintainer's own Pi 5 dev machine, which would otherwise have
+  been silently misconfigured by its own bugfix.
 
 ### Known limitations at time of writing
 - **A package's very first npm publish sets `latest` too, regardless of
