@@ -44,6 +44,8 @@
     "CONTRIBUTING.md",
     "!docs/RELEASE-PROCESS.md",
     "!scripts/record/**",
-    "!.claude-plugin/marketplace.json"
+    "!.claude-plugin/marketplace.json",
+    "!examples/teapot-demo/demo.gif",
+    "!examples/teapot-demo/demo.mp4"
   ]
 }

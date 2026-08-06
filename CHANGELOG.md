@@ -10,19 +10,46 @@ tracks changes at release granularity (`release.yml`'s manual minor/major
 cuts), not every commit.
 
 > [!NOTE]
-> Everything through `v0.4.6` accumulated under one perpetual
+> Everything through `v0.4.8` accumulated under one perpetual
 > `[Unreleased]` heading — this file never actually got cut into
 > per-version sections release over release, despite the Keep a
-> Changelog framing above. Not backfilled retroactively (that history
-> is still in git tags/GitHub Releases if you need it); starting with
-> the next release, cutting `[Unreleased]` into a dated `## [X.Y.Z]`
-> section is a real step in the release process — see
-> `docs/RELEASE-PROCESS.md`.
+> Changelog framing above, and despite a prior version of this note
+> claiming that would start "with the next release" as of `v0.4.6`. It
+> didn't, for two releases running. Cut for real below, retroactively
+> labeled `[0.4.8]` since that's what's actually on npm `latest` as of
+> this cut. Not backfilled further than that (earlier history is still
+> in git tags/GitHub Releases if you need it). Cutting `[Unreleased]`
+> into a dated `## [X.Y.Z]` section at release time remains the intended
+> step per `docs/RELEASE-PROCESS.md` — it just isn't CI-enforced, so
+> whether it actually happens depends on remembering to do it by hand.
 
 ## [Unreleased]
 
-Tracking toward the 1.0.0 release. Update this section with real UAT
-results before cutting the tag — see the UAT runbook.
+### Added
+- README's "Quick start" now shows the real thing instead of just
+  describing it: an embedded `examples/teapot-demo/demo.gif` (full-quality
+  `demo.mp4` linked alongside) of an actual `/checkpoint before` →
+  click Spawn → `/diff before` → `/export-report before` run, plus the
+  matching chat transcript, and a second, illustrative transcript showing
+  the same outcome from one natural-language prompt instead of three
+  slash commands. Both media files are excluded from the npm package
+  (`package.json`'s `files`, same `!` negation pattern already used for
+  `scripts/record/**`; `vendor/` takes a different route entirely — it's
+  never listed in `files` at all) — README-only, not something an
+  installed plugin needs.
+
+## [0.4.8] - 2026-08-06
+
+Maintainer's read as of this date: this is about as close to a
+1.0.0-quality bar as this project has been. Real-hardware UAT (below)
+validated the core loop — `/checkpoint`, `/diff`, `/sweep`,
+`/sync-view`, the three subagents, the regression suite — on
+2026-07-31. Everything added since then (`/memcheck`, `/export-report`,
+`/ship-check`, the perf/memory diff fields, background-mode execution,
+touch/mobile `/replay`, the WebGPU dependency menu) hasn't had its own
+UAT pass yet. That's tracked as open follow-up work, not treated as a
+hard gate on calling a release near-1.0 — see the UAT runbook when
+there's a real pass to run.
 
 ### Added
 - `/memcheck` command and an AGENTS.md §1 routing row so `visual-debugger`
