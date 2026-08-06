@@ -1,6 +1,6 @@
 {
   "name": "@propersloth/parallax-threejs",
-  "version": "0.4.6",
+  "version": "0.4.7",
   "description": "Three.js/GLSL debugging for Claude Code — correlates scene graph, console, GL state, and pixels into one diagnosis. Plus SHA-indexed visual regression testing.",
   "author": {
     "name": "Sean Corbett O'Donnell",
