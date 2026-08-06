@@ -41,6 +41,7 @@
     ".mcp.json",
     "AGENTS.md",
     "CHANGELOG.md",
-    "!docs/RELEASE-PROCESS.md"
+    "!docs/RELEASE-PROCESS.md",
+    "!scripts/record/**"
   ]
 }

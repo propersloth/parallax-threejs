@@ -1,0 +1,6 @@
+{
+  "name": "default",
+  "formats": { "mp4": true, "gif": true },
+  "mp4": { "scale": "1280:-2", "crf": 20, "preset": "slow" },
+  "gif": { "fps": 15, "scale": "800:-2" }
+}
