@@ -1,0 +1,11 @@
+{
+  "name": "checkpoint-diff",
+  "path": "/index.html",
+  "steps": [
+    { "action": "waitForSelector", "selector": "canvas" },
+    { "action": "waitForFirstRender" },
+    { "action": "wait", "ms": 1000 },
+    { "action": "click", "selector": "#btn-spawn" },
+    { "action": "wait", "ms": 2500 }
+  ]
+}

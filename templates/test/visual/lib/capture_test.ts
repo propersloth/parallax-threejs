@@ -71,6 +71,51 @@ Deno.test("captureScenario's wait step actually delays execution", async () => {
   });
 });
 
+Deno.test("captureScenario's waitForFirstRender step blocks until window.__renderer__ reports a real frame", async () => {
+  // Simulates the exact gap this step exists to close: a scene whose
+  // renderer only starts reporting rendered frames after some delay
+  // (standing in for real-world CDN/asset load time), confirming the
+  // step genuinely blocks on that condition rather than resolving
+  // immediately regardless of it.
+  const html = `<!doctype html>
+<html><body>
+<canvas id="c" width="200" height="200"></canvas>
+<script>
+  setTimeout(() => {
+    window.__renderer__ = { info: { render: { frame: 1 } } };
+  }, 150);
+</script>
+</body></html>`;
+  const server = Deno.serve(
+    { port: 0, onListen: () => {} },
+    () => new Response(html, { headers: { "content-type": "text/html" } }),
+  );
+  const port = (server.addr as Deno.NetAddr).port;
+  try {
+    const scenario: Scenario = {
+      name: "fixture-test",
+      path: "/",
+      steps: [
+        { action: "waitForFirstRender" },
+        { action: "keyframe", name: "after-render" },
+      ],
+    };
+    const start = performance.now();
+    const { shots } = await captureScenario(
+      `http://localhost:${port}`,
+      scenario,
+    );
+    const elapsed = performance.now() - start;
+    assertEquals("after-render" in shots, true);
+    // Genuinely blocked on the 150ms delay, not a coincidental pass —
+    // page.waitForFunction() polls, so some slack above the raw delay
+    // is expected and fine; what matters is it didn't return near-0ms.
+    assertEquals(elapsed >= 150, true);
+  } finally {
+    await server.shutdown();
+  }
+});
+
 Deno.test("captureScenario returns memory: null when window.__renderer__ isn't exposed", async () => {
   await withFixtureServer(async (baseUrl) => {
     const scenario: Scenario = {

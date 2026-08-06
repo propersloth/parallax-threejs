@@ -1,6 +1,16 @@
 export type Step =
   | { action: "wait"; ms: number }
   | { action: "waitForSelector"; selector: string }
+  // Waits for window.__renderer__.info.render.frame > 0 -- confirmed
+  // empirically (cycle 2's demo-recording work) that waitForSelector
+  // alone leaves a variable, CDN/asset-load-dependent blank window
+  // before a scene's first real frame. Any scenario whose first
+  // keyframe follows close behind waitForSelector without its own
+  // generous `wait` risks capturing that blank window instead of real
+  // content. Requires window.__renderer__ to be exposed (same
+  // prerequisite `/checkpoint`'s memory/perf fields already have) --
+  // optional, only use it where that's already true.
+  | { action: "waitForFirstRender" }
   | { action: "click"; selector: string }
   | { action: "dragOrbit"; dx: number; dy: number }
   | { action: "evaluate"; script: string }
