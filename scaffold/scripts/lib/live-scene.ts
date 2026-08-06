@@ -341,7 +341,23 @@ export async function attachToLiveScene(): Promise<
   // Assumes the first page is the one being debugged. If multiple tabs are
   // open this could attach to the wrong one — worth adding a URL filter if
   // that becomes a real problem in practice, not assumed away here.
-  return { browser, page: pages[0] };
+  const page = pages[0];
+
+  // CDP-reachable only means Chrome's debugger port is open — it says
+  // nothing about whether the page it launched (module scripts fetching
+  // three.js from a CDN, then running the prototype's own setup code)
+  // has actually finished running yet. Without this wait, a cold launch
+  // can return a page whose `window.scene` assignment hasn't executed
+  // yet, making the very first command after a fresh launch fail with
+  // "window.scene is not defined" even on a correctly wired-up
+  // prototype — confirmed via a real UAT run against
+  // examples/teapot-demo/ (first checkpoint after a cold launch failed;
+  // the immediate retry succeeded once the page had finished loading).
+  // A no-op if the page already finished loading (the common case: an
+  // already-running, reused Chromium).
+  await page.waitForLoadState("load");
+
+  return { browser, page };
 }
 
 // Minimal shape of a three.js Object3D as seen from the browser side —
@@ -436,7 +452,7 @@ export async function setProperty(
   );
 }
 
-// RendererMemory/RendererPerf and their getters moved to templates/lib/
+// RendererMemory/RendererPerf and their getters moved to scaffold/lib/
 // renderer-info.ts — this file's helpers are scripts/-only concerns
 // (checkpoint/sweep/replay live-tab attachment), but the renderer-info
 // reads are shared with test/visual/lib/capture.ts too, per PR #30

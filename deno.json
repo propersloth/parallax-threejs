@@ -2,7 +2,8 @@
   "exclude": ["vendor/"],
   "nodeModulesDir": "none",
   "tasks": {
-    "test": "deno test --allow-run=git --allow-read --allow-write --ignore=templates/test/visual/lib/capture_test.ts,templates/scripts/lib/live-scene_test.ts,templates/lib/renderer-info_test.ts templates/ scripts/ hooks/"
+    "test": "deno test --allow-run=git --allow-read --allow-write --ignore=scaffold/test/visual/lib/capture_test.ts,scaffold/scripts/lib/live-scene_test.ts,scaffold/lib/renderer-info_test.ts scaffold/ scripts/ hooks/",
+    "check:scaffold-drift": "deno run --allow-read --allow-write scripts/check-scaffold-drift.ts"
   },
   "imports": {
     "@dimforge/rapier3d": "npm:@dimforge/rapier3d@^0.19.3",

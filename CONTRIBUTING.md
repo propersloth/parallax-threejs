@@ -25,10 +25,10 @@ from the one-time setup above — it runs the same things):
 
 ```bash
 deno check scripts/*.ts
-deno fmt --check scripts/ hooks/ templates/
-deno lint scripts/ hooks/ templates/
+deno fmt --check scripts/ hooks/ scaffold/
+deno lint scripts/ hooks/ scaffold/
 deno run --allow-read scripts/validate-config-syntax.ts
-deno test --allow-run=git --allow-read --allow-write --ignore=templates/test/visual/lib/capture_test.ts,templates/scripts/lib/live-scene_test.ts,templates/lib/renderer-info_test.ts templates/ scripts/ hooks/
+deno test --allow-run=git --allow-read --allow-write --ignore=scaffold/test/visual/lib/capture_test.ts,scaffold/scripts/lib/live-scene_test.ts,scaffold/lib/renderer-info_test.ts scaffold/ scripts/ hooks/
 ```
 
 Also worth a manual `claude --plugin-dir .` session to sanity-check

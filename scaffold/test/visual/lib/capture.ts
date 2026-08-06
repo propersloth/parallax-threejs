@@ -4,7 +4,7 @@ import { chromium } from "playwright";
 import type { Page } from "playwright";
 import type { RendererMemory } from "../../../lib/renderer-info.ts";
 import { getRendererMemorySummary } from "../../../lib/renderer-info.ts";
-import type { Scenario } from "./types.ts";
+import type { Scenario, Step } from "./types.ts";
 
 export interface CaptureResult {
   shots: Record<string, Uint8Array>;
@@ -61,44 +61,37 @@ async function touchDragOrbit(
   });
 }
 
-export async function captureScenario(
-  baseUrl: string,
-  scenario: Scenario,
-): Promise<CaptureResult> {
-  // "memory" is reserved for the scenario-level memory check
-  // (types.ts's Manifest.memory) — enforced here, not just documented,
-  // so a scenario author who picks it for an unrelated pixel keyframe
-  // gets a loud error instead of `visual:accept <scenario> memory`
-  // silently resolving to the memory check and never touching their
-  // keyframe's own pending-review entry.
-  for (const step of scenario.steps) {
-    if (step.action === "keyframe" && step.name === "memory") {
-      throw new Error(
-        `scenario "${scenario.name}": keyframe name "memory" is reserved ` +
-          `for the scenario-level memory check — rename this keyframe.`,
-      );
-    }
-  }
-
-  const browser = await chromium.launch();
-  const page = await browser.newPage({
-    viewport: scenario.device?.viewport ?? { width: 1280, height: 800 },
-    isMobile: scenario.device?.isMobile,
-    hasTouch: scenario.device?.hasTouch,
-    deviceScaleFactor: scenario.device?.deviceScaleFactor,
-  });
-  const hasTouch = scenario.device?.hasTouch ?? false;
+// Drives a scenario's step array against an already-navigated page.
+// Extracted from captureScenario() (cycle 2's demo-recording work) so
+// dev tooling that needs the exact same interaction-driving logic --
+// but not captureScenario()'s own browser lifecycle, viewport setup, or
+// {shots, memory} return shape -- can reuse it directly instead of
+// re-deriving the step vocabulary a second time. captureScenario()
+// itself is unchanged in behavior; this is a pure extraction.
+export async function runSteps(
+  page: Page,
+  steps: Step[],
+  hasTouch: boolean,
+): Promise<Record<string, Uint8Array>> {
   const shots: Record<string, Uint8Array> = {};
 
-  await page.goto(new URL(scenario.path, baseUrl).toString());
-
-  for (const step of scenario.steps) {
+  for (const step of steps) {
     switch (step.action) {
       case "wait":
         await page.waitForTimeout(step.ms);
         break;
       case "waitForSelector":
         await page.waitForSelector(step.selector);
+        break;
+      case "waitForFirstRender":
+        // window.__renderer__ is the same exposure every other Parallax
+        // command already depends on -- reusing it here rather than
+        // inventing a separate readiness signal.
+        await page.waitForFunction(
+          () =>
+            // deno-lint-ignore no-explicit-any
+            (globalThis as any).__renderer__?.info?.render?.frame > 0,
+        );
         break;
       case "click":
         // page.tap() requires hasTouch: true on the context (enforced by
@@ -132,6 +125,41 @@ export async function captureScenario(
         break;
     }
   }
+
+  return shots;
+}
+
+export async function captureScenario(
+  baseUrl: string,
+  scenario: Scenario,
+): Promise<CaptureResult> {
+  // "memory" is reserved for the scenario-level memory check
+  // (types.ts's Manifest.memory) — enforced here, not just documented,
+  // so a scenario author who picks it for an unrelated pixel keyframe
+  // gets a loud error instead of `visual:accept <scenario> memory`
+  // silently resolving to the memory check and never touching their
+  // keyframe's own pending-review entry.
+  for (const step of scenario.steps) {
+    if (step.action === "keyframe" && step.name === "memory") {
+      throw new Error(
+        `scenario "${scenario.name}": keyframe name "memory" is reserved ` +
+          `for the scenario-level memory check — rename this keyframe.`,
+      );
+    }
+  }
+
+  const browser = await chromium.launch();
+  const page = await browser.newPage({
+    viewport: scenario.device?.viewport ?? { width: 1280, height: 800 },
+    isMobile: scenario.device?.isMobile,
+    hasTouch: scenario.device?.hasTouch,
+    deviceScaleFactor: scenario.device?.deviceScaleFactor,
+  });
+  const hasTouch = scenario.device?.hasTouch ?? false;
+
+  await page.goto(new URL(scenario.path, baseUrl).toString());
+
+  const shots = await runSteps(page, scenario.steps, hasTouch);
 
   const memory = await getRendererMemorySummary(page);
   await browser.close();
