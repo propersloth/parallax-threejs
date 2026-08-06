@@ -42,11 +42,26 @@ these files live there and not hand-duplicated per project.
    package for 'npm:pixelmatch'...` (UAT finding #13). Setting
    `"nodeModulesDir": "none"` disables that auto-detection; the `imports`
    entries are what actually let the bare specifiers resolve at all.
-6. **`.mcp.json`**: if `./.mcp.json` doesn't exist yet, copy
-   `${CLAUDE_PLUGIN_ROOT}/.mcp.json` (or
-   `${CLAUDE_PLUGIN_ROOT}/examples/raspberry-pi/mcp.json` if this is a Pi
-   setup — ask if unclear). If one already exists, don't touch it; report
-   that it exists and point at the two source files for manual merging.
+6. **`.mcp.json`**: if `./.mcp.json` doesn't exist yet, first check for
+   Raspberry Pi hardware — `cat /proc/device-tree/model 2>/dev/null`
+   (look for "Raspberry Pi" in the output) is the decisive check on
+   Linux; fall back to `uname -a` (`bcm2712`/`rpi` in the kernel string)
+   if the device-tree path isn't readable. The two templates default to
+   opposite rendering modes for a real hardware reason, not a style
+   choice: `${CLAUDE_PLUGIN_ROOT}/.mcp.json` runs `chrome-devtools-mcp`
+   and `playwright-mcp` **headless**, right for the common desktop/laptop
+   case; `${CLAUDE_PLUGIN_ROOT}/examples/raspberry-pi/mcp.json` runs them
+   **headed** against the Pi's own display on purpose, because
+   headless/software-rendering WebGL is documented as unreliable on Pi 5
+   even with GPU flags set correctly (see `AGENTS.md` §7a). Copy
+   whichever template the check confirms, and say which one and why in
+   the summary (step 7) — don't apply the Pi template silently. If the
+   check is inconclusive (non-Linux, containerized, `/proc/device-tree`
+   unreadable) and the person hasn't already said what hardware this is,
+   ask before picking a default rather than guessing. If a `.mcp.json`
+   already exists, don't touch it; report that it exists and point at
+   both source files for manual merging, flagging the Pi caveat if the
+   hardware check found one.
 7. **Report a summary**: what was added, what already existed and was
    skipped, and any conflicts that need manual attention — in that order,
    so conflicts are the last (most actionable) thing the person reads.
