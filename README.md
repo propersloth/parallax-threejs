@@ -85,7 +85,48 @@ That's a snapshot of the scene graph, console, and a screenshot, bundled togethe
 
 Instead of squinting at two screenshots, you get a real report: what moved, what didn't, whether any new console errors showed up, and how big the visual difference is. You decide whether that's the fix working or a regression. Parallax never makes that call for you.
 
-That's the whole minimum setup. Two optional add-ons worth knowing about once you're past it:
+That's the whole minimum setup. Here's what it actually looks like, end to end, against the bundled [teapot demo](examples/teapot-demo) scene:
+
+![Demo: /checkpoint before, clicking Spawn in the browser, then /diff before and /export-report](examples/teapot-demo/demo.gif)
+
+*(Looping above for size — [full-quality .mp4](examples/teapot-demo/demo.mp4) if you want it sharper or slower.)*
+
+```
+> /checkpoint before
+Checkpoint "before" saved — 5 objects, console clean, screenshot captured.
+
+  [click "Spawn" in the browser — adds one temp mesh to the scene]
+
+> /diff before
+Since "before": 6 objects (+1 — the spawned mesh), a 3.6% pixel diff
+concentrated where the new mesh appears, +1 draw call and +4096 triangles,
++1 geometry retained. No new console errors — the spawn worked as
+expected, nothing unaccounted for.
+
+> /export-report before
+Saved .parallax/reports/2026-08-06T02-22-59-541Z-before.html — before/
+after/overlay screenshots, the console diff, and this same delta, all in
+one file you can open or share without pasting screenshots one at a time.
+```
+
+You don't have to drive it command-by-command, either. Say what you want in one prompt and Claude reaches for the same tools on its own — this is the "you generally won't call these by name" behavior described in [Your toolkit](#your-toolkit) below, shown against this exact scenario instead of just claimed:
+
+```
+> Checkpoint the scene as "before", then I'm going to click Spawn — diff
+> it against "before" once I tell you I'm done, and export a shareable
+> report.
+Checkpoint "before" saved — 5 objects, console clean, screenshot captured.
+Go ahead, I'll wait.
+
+> done
+Since "before": 6 objects (+1 — the spawned mesh), a 3.6% pixel diff
+concentrated where the new mesh appears, +1 draw call and +4096
+triangles, +1 geometry retained. No new console errors — the spawn
+worked as expected. Report saved to
+.parallax/reports/2026-08-06T02-22-59-541Z-before.html.
+```
+
+Two optional add-ons worth knowing about once you're past it:
 
 - **[Recommended skills](docs/RECOMMENDED-SKILLS.md)**: general three.js/WebGL knowledge for Claude, on top of the debugging loop. Not bundled, genuinely optional.
 - **[Recommended dependencies](docs/RECOMMENDED-DEPENDENCIES.md)**: a curated pick of physics, animation, and postprocessing libraries, if your project needs any of that.
