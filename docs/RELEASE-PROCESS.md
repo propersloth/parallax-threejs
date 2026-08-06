@@ -83,6 +83,23 @@ shipping sight-unseen — which, realistically, is most releases.
 > cut, or publish an intentionally-throwaway placeholder version first if
 > you need a real pre-release window from day one.
 
+### Step 0.5 — cut the CHANGELOG section
+
+`release.yml` bumps `plugin.json`/`package.json`/the marketplace entry
+automatically, but it does **not** touch `CHANGELOG.md` — that's a manual
+step, done by hand before triggering the workflow, not after:
+
+1. Rename `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD` using the version
+   this release is about to become.
+2. Add a fresh, empty `## [Unreleased]` above it for whatever lands next.
+3. Commit that rename as part of the PR that merges to `main`, so the tag
+   `release.yml` creates in Step 1 already has the right section name.
+
+Skipping this is exactly how `CHANGELOG.md` ended up with every change
+since the project's first release piled under one perpetual
+`[Unreleased]` heading (see the note at the top of that file) — it's not
+enforced by CI, so it only holds if it's done deliberately, every time.
+
 ### Step 1 — cut the pre-release
 
 Actions → **Release** → **Run workflow**:
