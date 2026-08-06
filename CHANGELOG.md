@@ -26,16 +26,17 @@ cuts), not every commit.
 ## [Unreleased]
 
 ### Added
-- README's "Try it in 60 seconds" now shows the real thing instead of just
+- README's "Quick start" now shows the real thing instead of just
   describing it: an embedded `examples/teapot-demo/demo.gif` (full-quality
   `demo.mp4` linked alongside) of an actual `/checkpoint before` →
   click Spawn → `/diff before` → `/export-report before` run, plus the
-  matching chat transcript, and a second transcript showing the same
-  outcome from one natural-language prompt instead of three slash
-  commands. Both media files are excluded from the npm package
-  (`package.json`'s `files`, same pattern as `vendor/` and
-  `scripts/record/**`) — README-only, not something an installed plugin
-  needs.
+  matching chat transcript, and a second, illustrative transcript showing
+  the same outcome from one natural-language prompt instead of three
+  slash commands. Both media files are excluded from the npm package
+  (`package.json`'s `files`, same `!` negation pattern already used for
+  `scripts/record/**`; `vendor/` takes a different route entirely — it's
+  never listed in `files` at all) — README-only, not something an
+  installed plugin needs.
 
 ## [0.4.8] - 2026-08-06
 

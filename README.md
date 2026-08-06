@@ -131,7 +131,7 @@ Since "before": 6 objects (+1 — the spawned mesh), a 3.6% pixel diff
 concentrated where the new mesh appears, +1 draw call and +4096
 triangles, +1 geometry retained. No new console errors — the spawn
 worked as expected. Report saved to
-.parallax/reports/2026-08-06T02-22-59-541Z-before.html.
+.parallax/reports/2026-08-06T02-25-17-902Z-before.html.
 ```
 
 Two optional add-ons worth knowing about once you're past it:
