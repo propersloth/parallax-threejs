@@ -41,7 +41,9 @@
     ".mcp.json",
     "AGENTS.md",
     "CHANGELOG.md",
+    "CONTRIBUTING.md",
     "!docs/RELEASE-PROCESS.md",
-    "!scripts/record/**"
+    "!scripts/record/**",
+    "!.claude-plugin/marketplace.json"
   ]
 }

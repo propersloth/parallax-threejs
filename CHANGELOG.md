@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 tracks changes at release granularity (`release.yml`'s manual minor/major
 cuts), not every commit.
 
+> [!NOTE]
+> Everything through `v0.4.6` accumulated under one perpetual
+> `[Unreleased]` heading — this file never actually got cut into
+> per-version sections release over release, despite the Keep a
+> Changelog framing above. Not backfilled retroactively (that history
+> is still in git tags/GitHub Releases if you need it); starting with
+> the next release, cutting `[Unreleased]` into a dated `## [X.Y.Z]`
+> section is a real step in the release process — see
+> `docs/RELEASE-PROCESS.md`.
+
 ## [Unreleased]
 
 Tracking toward the 1.0.0 release. Update this section with real UAT
