@@ -2,7 +2,7 @@
   "mcpServers": {
     "chrome-devtools-mcp": {
       "command": "npx",
-      "args": ["-y", "chrome-devtools-mcp@1.6.0"]
+      "args": ["-y", "chrome-devtools-mcp@1.6.0", "--headless"]
     },
     "threejs-devtools-mcp": {
       "command": "npx",
@@ -11,7 +11,7 @@
     },
     "playwright-mcp": {
       "command": "npx",
-      "args": ["-y", "@playwright/mcp@0.0.78"]
+      "args": ["-y", "@playwright/mcp@0.0.78", "--headless"]
     },
     "spector": {
       "command": "node",
