@@ -3,7 +3,8 @@
     "chrome-devtools-mcp": {
       "command": "npx",
       "args": [
-        "-y", "chrome-devtools-mcp@1.6.0",
+        "-y",
+        "chrome-devtools-mcp@1.6.0",
         "--executablePath=/usr/bin/google-chrome-stable",
         "--isolated"
       ],

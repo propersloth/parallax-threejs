@@ -1,4 +1,4 @@
-# templates/
+# scaffold/
 
 Not user-facing documentation — this is the source of truth `/init`
 (`commands/init.md`) copies from when scaffolding Parallax's interactive scripts

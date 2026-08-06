@@ -54,11 +54,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-deno-
       - name: Run unit tests
-        # templates/ must be listed first: with it after scripts/ or hooks/,
+        # scaffold/ must be listed first: with it after scripts/ or hooks/,
         # deno test's --ignore glob silently fails to match the three excluded
-        # files under templates/, and the Playwright-importing test module
+        # files under scaffold/, and the Playwright-importing test module
         # gets loaded anyway (uncaught NotCapable error, no --allow-env).
-        run: deno test --allow-run=git --allow-read --allow-write --ignore=templates/test/visual/lib/capture_test.ts,templates/scripts/lib/live-scene_test.ts,templates/lib/renderer-info_test.ts templates/ scripts/ hooks/
+        run: deno test --allow-run=git --allow-read --allow-write --ignore=scaffold/test/visual/lib/capture_test.ts,scaffold/scripts/lib/live-scene_test.ts,scaffold/lib/renderer-info_test.ts scaffold/ scripts/ hooks/
 
   typecheck:
     runs-on: ubuntu-latest
@@ -82,14 +82,14 @@ jobs:
       - name: Type-check scripts
         run: deno check scripts/*.ts
       - name: Format check
-        run: deno fmt --check scripts/ hooks/ templates/
+        run: deno fmt --check scripts/ hooks/ scaffold/
       - name: Lint
         # First real run of this — never executed before, added per the
         # linting/checkstyle gap analysis. Deno's default recommended
         # rule set; a first-run failure here is plausible (e.g. the
         # any-typed spots in live-scene.ts) and would need a follow-up
         # fix, not evidence something's wrong with the check itself.
-        run: deno lint scripts/ hooks/ templates/
+        run: deno lint scripts/ hooks/ scaffold/
 
   schema-validate:
     runs-on: ubuntu-latest
@@ -130,6 +130,22 @@ jobs:
           else
             echo "No marketplace.json yet — skipping."
           fi
+
+  scaffold-drift:
+    runs-on: ubuntu-latest
+    # Mechanical half of the scaffold/example pairing principle (see
+    # aidlc-docs/handoff-directory-reorg.md) — examples/teapot-demo/ is
+    # the scaffold's proof that /init's copy step actually works, kept
+    # honest by re-running it and diffing rather than trusted by static
+    # reading. Catches the same class of drift a manually-remembered sync
+    # would eventually miss.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2
+        with:
+          deno-version: v2.x
+      - name: Check examples/teapot-demo/ against a fresh scaffold/ copy
+        run: deno task check:scaffold-drift
 
   plugin-validate:
     runs-on: ubuntu-latest

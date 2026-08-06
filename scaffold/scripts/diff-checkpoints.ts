@@ -46,7 +46,7 @@ if (!priorName) {
 // --allow-read/--allow-write/--allow-env) failed with a NotCapable error
 // before ever reaching checkpoint.ts's own logic — a pre-existing gap
 // this fixes, not a Unit 2 regression. Not a real privilege widening in
-// practice: templates/deno-tasks.json's "diff-checkpoints" task already
+// practice: scaffold/deno-tasks.json's "diff-checkpoints" task already
 // runs this whole script with --allow-all, so this subprocess's flags
 // were never the actual boundary — the parent already had full access.
 const fresh = await new Deno.Command("deno", {

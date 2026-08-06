@@ -137,18 +137,18 @@ jobs:
       - name: Type-check
         run: deno check scripts/*.ts
       - name: Format check
-        run: deno fmt --check scripts/ hooks/ templates/
+        run: deno fmt --check scripts/ hooks/ scaffold/
       - name: Lint
-        run: deno lint scripts/ hooks/ templates/
+        run: deno lint scripts/ hooks/ scaffold/
       - name: Validate all JSON/YAML config actually parses
         run: deno run --allow-read scripts/validate-config-syntax.ts
       - name: Run unit tests (Lane 1 — fast)
-        # templates/ must be listed first — see ci.yml's identical step for
+        # scaffold/ must be listed first — see ci.yml's identical step for
         # why: with it after scripts/ or hooks/, deno test's --ignore glob
-        # silently fails to match the three excluded files under templates/,
+        # silently fails to match the three excluded files under scaffold/,
         # and the Playwright-importing test module gets loaded anyway
         # (uncaught NotCapable error, no --allow-env).
-        run: deno test --allow-run=git --allow-read --allow-write --ignore=templates/test/visual/lib/capture_test.ts,templates/scripts/lib/live-scene_test.ts,templates/lib/renderer-info_test.ts templates/ scripts/ hooks/
+        run: deno test --allow-run=git --allow-read --allow-write --ignore=scaffold/test/visual/lib/capture_test.ts,scaffold/scripts/lib/live-scene_test.ts,scaffold/lib/renderer-info_test.ts scaffold/ scripts/ hooks/
       - name: Cache Playwright browsers
         id: playwright-cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -169,7 +169,7 @@ jobs:
         # step — playwright-core's internal isWsl() check does existsSync()
         # on /proc/sys/fs/binfmt_misc/..., which Deno only satisfies via
         # unscoped --allow-all regardless of how --allow-read is scoped.
-        run: deno test --allow-all templates/test/visual/lib/capture_test.ts templates/scripts/lib/live-scene_test.ts templates/lib/renderer-info_test.ts
+        run: deno test --allow-all scaffold/test/visual/lib/capture_test.ts scaffold/scripts/lib/live-scene_test.ts scaffold/lib/renderer-info_test.ts
       - name: Validate plugin.json against schema
         # -c ajv-formats registers the "uri" format keyword the schema uses
         # (e.g. on `homepage`) — see ci.yml's identical step. Without it ajv

@@ -14,15 +14,15 @@
 set -e
 
 echo "== deno fmt --check =="
-deno fmt --check scripts/ hooks/ templates/
+deno fmt --check scripts/ hooks/ scaffold/
 
 echo "== deno lint =="
-deno lint scripts/ hooks/ templates/
+deno lint scripts/ hooks/ scaffold/
 
 echo "== config syntax (JSON/YAML) =="
 deno run --allow-read scripts/validate-config-syntax.ts
 
 echo "== deno test (Lane 1) =="
-deno test --allow-run=git --allow-read --allow-write --ignore=templates/test/visual/lib/capture_test.ts,templates/scripts/lib/live-scene_test.ts,templates/lib/renderer-info_test.ts templates/ scripts/ hooks/
+deno test --allow-run=git --allow-read --allow-write --ignore=scaffold/test/visual/lib/capture_test.ts,scaffold/scripts/lib/live-scene_test.ts,scaffold/lib/renderer-info_test.ts scaffold/ scripts/ hooks/
 
 echo "Pre-commit checks passed."

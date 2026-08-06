@@ -49,10 +49,10 @@
         "--allow-run=git",
         "--allow-read",
         "--allow-write",
-        "--ignore=templates/test/visual/lib/capture_test.ts,templates/scripts/lib/live-scene_test.ts",
+        "--ignore=scaffold/test/visual/lib/capture_test.ts,scaffold/scripts/lib/live-scene_test.ts",
         "scripts/",
         "hooks/",
-        "templates/"
+        "scaffold/"
       ],
       "attachSimplePort": 9229
     },
@@ -74,8 +74,8 @@
         "--allow-write",
         "--allow-env",
         "--allow-run",
-        "templates/test/visual/lib/capture_test.ts",
-        "templates/scripts/lib/live-scene_test.ts"
+        "scaffold/test/visual/lib/capture_test.ts",
+        "scaffold/scripts/lib/live-scene_test.ts"
       ],
       "attachSimplePort": 9229
     }

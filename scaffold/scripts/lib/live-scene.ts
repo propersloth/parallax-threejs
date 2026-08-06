@@ -436,7 +436,7 @@ export async function setProperty(
   );
 }
 
-// RendererMemory/RendererPerf and their getters moved to templates/lib/
+// RendererMemory/RendererPerf and their getters moved to scaffold/lib/
 // renderer-info.ts — this file's helpers are scripts/-only concerns
 // (checkpoint/sweep/replay live-tab attachment), but the renderer-info
 // reads are shared with test/visual/lib/capture.ts too, per PR #30

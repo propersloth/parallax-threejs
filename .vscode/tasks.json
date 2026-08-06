@@ -4,7 +4,7 @@
     {
       "label": "Format check",
       "type": "shell",
-      "command": "deno fmt --check scripts/ hooks/ templates/",
+      "command": "deno fmt --check scripts/ hooks/ scaffold/",
       "group": "build",
       "presentation": { "reveal": "silent", "panel": "shared" },
       "problemMatcher": []
@@ -12,7 +12,7 @@
     {
       "label": "Lint",
       "type": "shell",
-      "command": "deno lint scripts/ hooks/ templates/",
+      "command": "deno lint scripts/ hooks/ scaffold/",
       "group": "build",
       "presentation": { "reveal": "silent", "panel": "shared" },
       "problemMatcher": []
@@ -27,7 +27,7 @@
     {
       "label": "Test: Lane 1 (fast)",
       "type": "shell",
-      "command": "deno test --allow-run=git --allow-read --allow-write --ignore=templates/test/visual/lib/capture_test.ts,templates/scripts/lib/live-scene_test.ts scripts/ hooks/ templates/",
+      "command": "deno test --allow-run=git --allow-read --allow-write --ignore=scaffold/test/visual/lib/capture_test.ts,scaffold/scripts/lib/live-scene_test.ts scripts/ hooks/ scaffold/",
       "group": { "kind": "test", "isDefault": true },
       "presentation": { "reveal": "always", "panel": "dedicated" },
       "problemMatcher": []
@@ -35,7 +35,7 @@
     {
       "label": "Test: Lane 2 (browser, slower)",
       "type": "shell",
-      "command": "deno test --allow-net --allow-read --allow-write --allow-env --allow-run templates/test/visual/lib/capture_test.ts templates/scripts/lib/live-scene_test.ts",
+      "command": "deno test --allow-net --allow-read --allow-write --allow-env --allow-run scaffold/test/visual/lib/capture_test.ts scaffold/scripts/lib/live-scene_test.ts",
       "group": "test",
       "presentation": { "reveal": "always", "panel": "dedicated" },
       "problemMatcher": [],
