@@ -7,9 +7,11 @@
 
 **Give Claude Code actual eyes on your three.js scene, so it stops guessing and starts diagnosing.**
 
-You're building the three.js project you've always wanted (a portfolio piece, a weird little game, an interactive art thing) mostly by vibe-coding it with Claude. It's going great, right up until something on screen looks *wrong* and you can't say why. So you paste a screenshot. Claude guesses. You try the guess. It doesn't fix it. You paste another screenshot.
+You're building the three.js thing you've always wanted (a portfolio piece, a weird little game, some interactive art thing), mostly vibe-coding it with Claude. Going great, until something on screen looks *wrong* and you can't say why. You paste a screenshot. Claude guesses. You try the guess. Still broken. You paste another screenshot.
 
-That loop isn't your fault. A screenshot is the least informative thing you can debug from: a black object could be an unlit material, a missing texture, a shader error, or the camera clipping through it, and a picture alone can't tell those apart. Parallax gives Claude the same access you'd want if you could see under the hood yourself: the live scene graph, the browser console, raw GPU state, and pixels, correlated together instead of guessed from one alone.
+Not your fault. A screenshot is about the worst thing you can debug from: a black object could be an unlit material, a missing texture, a broken shader, or the camera clipping through it, and a picture alone can't tell those apart. Parallax gives Claude what you'd actually want: the real scene graph, the console, raw GPU state, and the pixels, checked against each other instead of one guess from one source.
+
+That holds even when there's no screen to paste a screenshot from at all. This started because my Raspberry Pi's power supply couldn't keep up with rendering to a high-def display, so headless wasn't a feature choice, it was survival. I figured debugging by evidence instead of by eyeballing pixels would be slow going, groping forward in the dark. Instead it turned out faster: it just automated the cross-checking I was already doing by hand.
 
 ## Sound familiar?
 
