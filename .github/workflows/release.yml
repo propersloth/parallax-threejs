@@ -249,6 +249,14 @@ jobs:
           fi
 
       - name: Commit version bump
+        # Races bump-patch.yml's Auto-bump the same way described there:
+        # both push to main with BUMP_PAT, and Auto-bump's actor isn't
+        # github-actions[bot] so it can trigger from this job's own earlier
+        # pushes too. Unlike Auto-bump, this commit's version number can't
+        # be recomputed on conflict -- steps.version.outputs.new_version is
+        # already the number npm publish (and the Tag step right after
+        # this one) commit to, so if a rebase conflicts on the same
+        # `.version` line, our side has to win rather than being discarded.
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -256,7 +264,26 @@ jobs:
           [ -f .claude-plugin/marketplace.json ] && git add .claude-plugin/marketplace.json
           [ -f package.json ] && git add package.json
           git commit -m "chore(release): v${{ steps.version.outputs.new_version }} [skip ci]"
-          git push
+
+          for i in 1 2 3 4 5; do
+            if git push; then
+              exit 0
+            fi
+
+            echo "push rejected (attempt $i/5), rebasing onto origin/main"
+            if ! git fetch origin main; then
+              echo "::warning::git fetch failed on attempt $i, retrying"
+              continue
+            fi
+            if ! git rebase -X ours origin/main; then
+              git rebase --abort
+              echo "::error::rebase conflict on the release version bump couldn't auto-resolve"
+              exit 1
+            fi
+          done
+
+          echo "::error::failed to push release version bump after 5 attempts"
+          exit 1
 
       - name: Tag
         run: |
@@ -435,13 +462,36 @@ jobs:
           fi
 
       - name: Commit the marketplace-entry update, if anything changed
+        # Same push race as the "Commit version bump" step above (see its
+        # comment) -- this commit only touches the stable marketplace
+        # entry's ref, but that ref is what makes this promote() call
+        # meaningful, so it has to land, not be discarded on conflict.
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           if [ -f .claude-plugin/marketplace.json ] && ! git diff --quiet .claude-plugin/marketplace.json; then
             git add .claude-plugin/marketplace.json
             git commit -m "chore(release): promote v$PROMOTE_VERSION to stable [skip ci]"
-            git push
+
+            for i in 1 2 3 4 5; do
+              if git push; then
+                exit 0
+              fi
+
+              echo "push rejected (attempt $i/5), rebasing onto origin/main"
+              if ! git fetch origin main; then
+                echo "::warning::git fetch failed on attempt $i, retrying"
+                continue
+              fi
+              if ! git rebase -X ours origin/main; then
+                git rebase --abort
+                echo "::error::rebase conflict on the promote commit couldn't auto-resolve"
+                exit 1
+              fi
+            done
+
+            echo "::error::failed to push promote commit after 5 attempts"
+            exit 1
           else
             echo "Nothing to commit -- marketplace.json unchanged or absent."
           fi

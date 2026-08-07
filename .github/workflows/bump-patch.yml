@@ -32,38 +32,76 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.BUMP_PAT }}
 
-      - name: Bump patch version
+      - name: Bump patch version, commit, and push
         id: bump
-        run: |
-          CURRENT=$(jq -r .version .claude-plugin/plugin.json)
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
-          NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
-          jq --arg v "$NEW_VERSION" '.version = $v' .claude-plugin/plugin.json > tmp.json && mv tmp.json .claude-plugin/plugin.json
-          # Keep package.json in lockstep with plugin.json — same reasoning
-          # as release.yml's "Update package.json" step: the two must never
-          # disagree about what "this version" means.
-          if [ -f package.json ]; then
-            jq --arg v "$NEW_VERSION" '.version = $v' package.json > tmp.json && mv tmp.json package.json
-          fi
-          # Same for marketplace.json's own embedded parallax-threejs entry
-          # version -- `claude plugin validate --strict` (ci.yml's
-          # plugin-validate job) flags a mismatch here as a warning-treated-
-          # as-error. plugin.json wins at install time regardless (this
-          # field is cosmetic/informational only), but leaving it stale
-          # fails that check for no reason.
-          if [ -f .claude-plugin/marketplace.json ]; then
-            jq --arg v "$NEW_VERSION" \
-              '(.plugins[] | select(.name == "parallax-threejs") | .version) = $v' \
-              .claude-plugin/marketplace.json > tmp.json && mv tmp.json .claude-plugin/marketplace.json
-          fi
-          echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
-
-      - name: Commit
+        # Pushes with BUMP_PAT race release.yml, which pushes version-bump
+        # commits to main via the same PAT (see the top-of-file comment) —
+        # its actor isn't github-actions[bot], so those pushes also trigger
+        # this workflow, and the two can land in the same few-second window.
+        # A plain `git push` after that is a non-fast-forward rejection with
+        # no recovery, which is exactly what failed on 2026-08-06 (two
+        # Auto-bump runs both rejected mid-race with a release cut).
+        #
+        # Rebasing the already-committed bump onto the new tip isn't safe
+        # here: the racing commit very often bumped the exact same
+        # `.version` line to a different value, so the rebase hits a real
+        # conflict instead of cleanly dropping an already-applied change,
+        # and fails on the first retry -- no better than not retrying at
+        # all. Since nothing outside this job depends on which patch
+        # number we land on (unlike release.yml, which has already
+        # published npm/tagged under its number by the time it commits),
+        # the safe move is to discard the failed commit, resync to
+        # whatever landed on origin/main, and recompute the bump from
+        # there -- so every attempt commits a version bump that's
+        # guaranteed to apply cleanly on top of current main.
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .claude-plugin/plugin.json
-          [ -f package.json ] && git add package.json
-          [ -f .claude-plugin/marketplace.json ] && git add .claude-plugin/marketplace.json
-          git commit -m "chore: bump version to ${{ steps.bump.outputs.new_version }} [skip ci]"
-          git push
+
+          for i in 1 2 3 4 5; do
+            CURRENT=$(jq -r .version .claude-plugin/plugin.json)
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+            NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+            jq --arg v "$NEW_VERSION" '.version = $v' .claude-plugin/plugin.json > tmp.json && mv tmp.json .claude-plugin/plugin.json
+            # Keep package.json in lockstep with plugin.json — same reasoning
+            # as release.yml's "Update package.json" step: the two must never
+            # disagree about what "this version" means.
+            if [ -f package.json ]; then
+              jq --arg v "$NEW_VERSION" '.version = $v' package.json > tmp.json && mv tmp.json package.json
+            fi
+            # Same for marketplace.json's own embedded parallax-threejs entry
+            # version -- `claude plugin validate --strict` (ci.yml's
+            # plugin-validate job) flags a mismatch here as a warning-treated-
+            # as-error. plugin.json wins at install time regardless (this
+            # field is cosmetic/informational only), but leaving it stale
+            # fails that check for no reason.
+            if [ -f .claude-plugin/marketplace.json ]; then
+              jq --arg v "$NEW_VERSION" \
+                '(.plugins[] | select(.name == "parallax-threejs") | .version) = $v' \
+                .claude-plugin/marketplace.json > tmp.json && mv tmp.json .claude-plugin/marketplace.json
+            fi
+
+            git add .claude-plugin/plugin.json
+            [ -f package.json ] && git add package.json
+            [ -f .claude-plugin/marketplace.json ] && git add .claude-plugin/marketplace.json
+            git commit -m "chore: bump version to $NEW_VERSION [skip ci]"
+
+            if git push; then
+              echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            echo "push rejected (attempt $i/5), resyncing with origin/main and recomputing the bump"
+            # Guarded, not a bare `git fetch` -- this step runs under
+            # `bash -e`, so an unguarded command here would let a
+            # transient network/API failure kill the whole retry loop
+            # after a single attempt instead of retrying up to 5 times.
+            if ! git fetch origin main; then
+              echo "::warning::git fetch failed on attempt $i, retrying"
+              continue
+            fi
+            git reset --hard origin/main
+          done
+
+          echo "::error::Auto-bump failed to push after 5 attempts"
+          exit 1
