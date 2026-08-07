@@ -59,6 +59,14 @@ jobs:
           echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Commit
+        # Pushes with BUMP_PAT race release.yml, which pushes version-bump
+        # commits to main via the same PAT (see the top-of-file comment) —
+        # its actor isn't github-actions[bot], so those pushes also trigger
+        # this workflow, and the two can land in the same few-second window.
+        # A plain `git push` after that is a non-fast-forward rejection with
+        # no recovery, which is exactly what failed on 2026-08-06 (two
+        # Auto-bump runs both rejected mid-race with a release cut). Rebase
+        # onto whatever landed first and retry a few times before giving up.
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -66,4 +74,10 @@ jobs:
           [ -f package.json ] && git add package.json
           [ -f .claude-plugin/marketplace.json ] && git add .claude-plugin/marketplace.json
           git commit -m "chore: bump version to ${{ steps.bump.outputs.new_version }} [skip ci]"
-          git push
+          for i in 1 2 3 4 5; do
+            git push && exit 0
+            echo "push rejected, rebasing onto origin/main (attempt $i)"
+            git fetch origin main
+            git rebase origin/main || { git rebase --abort; exit 1; }
+          done
+          exit 1
